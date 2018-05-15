@@ -4,7 +4,6 @@ library(tidyr)
 ripa<-read.csv(file.choose(), header = TRUE, sep = ";")
 head(ripa)
 
-ripa$observation
 sedda<-ripa %>% 
   select(lya, observation, antal) %>% 
   filter(observation == "F") %>% 

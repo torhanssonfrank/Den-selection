@@ -1,4 +1,4 @@
-﻿lya;gps-punkt;position;altitud;datum;observation;distans;vinkel;obstyp;marktyp;antal högar;antal;kommentar;väder;spårsnö;;;;;;;;;;;
+﻿lya;gps-punkt;Position;Höjd;datum;observation;distans;vinkel;obstyp;marktyp;antal högar;antal;kommentar;väder;spårsnö;;;;;;;;;;;
 zz020;START020;6 979 244 373 084;1008 m;2018-04-18 08:35;START;;;;;;;;;;;;;;;;;;;;
 zz020;F1;6 979 221 373 820;1086 m;2018-04-18 09:20;F;181;260;SE;B;;1;;vind, duggregn;korn;;;;;;;;;;;
 zz020;RS1;6 979 219 373 852;1097 m;2018-04-18 09:31;RS;;;;B;1;7;;vind, duggregn;korn;;;;;;;;;;;
@@ -7,7 +7,7 @@ zz020;RS2;6 979 219 373 939;1121 m;2018-04-18 09:40;RS;;;;;1;1;;vind, duggregn;k
 zz020;L1;6 979 204 374 145;1156 m;2018-04-18 09:48;L;;;;;;;;vind, duggregn;korn;;;;;;;;;;;
 zz020;RS3;6 979 208 374 147;1159 m;2018-04-18 09:59;RS;;;;B;1;15;gps = L1;vind, duggregn;korn;;;;;;;;;;;
 zz020;L2;6 979 133 375 174;1034 m;2018-04-18 10:19;L;;;;;;;;vind, duggregn;korn;;;;;;;;;;;
-zz020;F4;6 979 135 375 257;1022 m;2018-04-18 10:35;F;134;0;SE;BS;;;;vind, duggregn;korn;;;;;;;;;;;
+zz020;F4;6 979 135 375 257;1022 m;2018-04-18 10:35;F;134;0;SE;BS;;2;;vind, duggregn;korn;;;;;;;;;;;
 zz020;RS4;6 979 160 375 810;966 m;2018-04-18 10:47;RS;;;;S;1;1;;vind, duggregn;korn;;;;;;;;;;;
 zz020;L3;6 979 199 376 165;960 m;2018-04-18 10:55;L;;;;;;;;vind, duggregn;korn;;;;;;;;;;;
 zz020;L4;6 979 540 377 111;962 m;2018-04-18 11:31;L;;;;;;;;vind, duggregn;korn;;;;;;;;;;;
@@ -33,8 +33,8 @@ zz020;RS12;6 981 426 373 570;1008 m;2018-04-18 17:00;RS;;;;;1;1;;regn, vind;korn
 zz020;RS13;6 980 854 373 201;1008 m;2018-04-18 18:19;RS;;;;;;;;regn, vind;korn;;;;;;;;;;;
 zz020;L11;6 980 651 373 053;1013 m;2018-04-18 18:27;L;;;;;;;;vind;korn;;;;;;;;;;;
 zz104;STARTZZ104;6 978 155 373 957;1058 m;2018-04-19 07:36;START;;;;;;;;sol, växlande molnighet;korn;;;;;;;;;;;
-zz104;STARTZZ104;6 978 155 373 957;1058 m;2018-04-19 07:36;F;122;350;H;;;;;sol, växlande molnighet;korn;;;;;;;;;;;
-zz104;STARTZZ104;6 978 155 373 957;1058 m;2018-04-19 07:36;F;98;145;H;;;;;sol, växlande molnighet;korn;;;;;;;;;;;
+zz104;STARTZZ104;6 978 155 373 957;1058 m;2018-04-19 07:36;F;122;350;H;;;1;;sol, växlande molnighet;korn;;;;;;;;;;;
+zz104;STARTZZ104;6 978 155 373 957;1058 m;2018-04-19 07:36;F;98;145;H;;;1;;sol, växlande molnighet;korn;;;;;;;;;;;
 zz104;RS1;6 978 097 374 098;1060 m;2018-04-19 07:54;RS;1,5;270;;S;1;22;;sol, växlande molnighet;korn;;;;;;;;;;;
 zz104;RS2;6 978 074 374 126;1060 m;2018-04-19 08:00;RS;;;;B;1;6;ljus, ovanpå ris;sol, växlande molnighet;korn;;;;;;;;;;;
 zz104;F1;6 977 953 374 382;1050 m;2018-04-19 08:13;F;42;82;HSE;B;;2;;sol, växlande molnighet;korn;;;;;;;;;;;
@@ -246,7 +246,7 @@ zz096;F1;6 982 928 357 079;877 m;2018-04-27 07:10;F;27;280;HSE;;;1;;växlande mo
 zz096;NYRIKT;6 982 958 357 172;872 m;2018-04-27 07:12;NYRIKT;;;;;;;;växlande molnighet, 0 till -1;skare + 2 mm nysnö + mer snö under dagen;;;;;;;;;;;
 zz096;NYRIKT;6 982 732 357 448;874 m;2018-04-27 07:20;NYRIKT;;;;;;;;växlande molnighet, 0 till -1;skare + 2 mm nysnö + mer snö under dagen;;;;;;;;;;;
 zz096;RVSP;6 982 630 357 699;894 m;2018-04-27 07:26;RVSP;;;;;;;;snö, lätt vind;skare + 2 mm nysnö + mer snö under dagen;;;;;;;;;;;
-saknar;F2;6 982 348 358 299;900 m;2018-04-27 08:00;F;117;26;SE;B;;1;;snö, lätt vind;skare + 2 mm nysnö + mer snö under dagen;;;;;;;;;;;
+zz096;F2;6 982 348 358 299;900 m;2018-04-27 08:00;F;117;26;SE;B;;1;;snö, lätt vind;skare + 2 mm nysnö + mer snö under dagen;;;;;;;;;;;
 zz096;F3;6 982 183 358 919;905 m;2018-04-27 09:07;F;119;330;SE;BS;;1;;snö, lätt vind;skare + 2 mm nysnö + mer snö under dagen;;;;;;;;;;;
 zz096;F3;6 982 183 358 919;905 m;2018-04-27 09:07;F;222;112;H;;;1;;sol, lite snöfall;skare + 2 mm nysnö + mer snö under dagen;;;;;;;;;;;
 zz096;F4;6 982 114 359 058;911 m;2018-04-27 09:13;F;63;302;SE;B;;2;;sol, lite snöfall;skare + 2 mm nysnö + mer snö under dagen;;;;;;;;;;;

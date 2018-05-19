@@ -1,6 +1,8 @@
 library(dplyr)
 library(tidyr)
-
+install.packages("gapminder")
+library(gapminder)
+head(gapminder)
 ripa<-read.csv(file.choose(), header = TRUE, sep = ";")
 head(ripa)
 
@@ -12,6 +14,10 @@ sedda<-ripa %>%
 View(sedda)
 
 which(is.na(sedda$antal)) #det fattades 3 värden. Jag la till de i rådatan eftersom de fanns nedskrivna på pappren####
+
+sedda %>%
+  spread(lya)
+ 
 
 sedda_med_lysumma<-sedda %>%
   group_by(lya) %>% 
@@ -25,13 +31,16 @@ x<-sedda_med_lysumma$ripor_per_lya #ett  sätt att sätta ihop lynamnen med "rip
 names(x)<-sedda_med_lysumma$lya
 barplot(x, cex.names = 0.9, ylim = c(0,25), col = c("darkblue", "red"), ylab = "Antal observerade fjällripor", xlab = "Fjällrävslyor", main = "Antal observerade fjällripor per fjällrävslya")
 
+sedda
 sedda_med_lysumma %>% 
-  gather((key = ripor_per_lya) lya = ripor_per_lya, `zz014`,`zz020`,`zz042`, `zz033`)
-?select
+ spread(ripor_per_lya,lya, c("zz014", "zz020", "zz033", "zz042"))
+
+sedda_med_lysumma
 aktiv<-sedda_med_lysumma %>% 
   filter(lya %in% c("zz014", "zz020", "zz033", "zz042"))
 summa_aktiv<-aktiv %>% 
   summarise(aktiv_ripor = sum(ripor_per_lya))
+
 
 inaktiv<-sedda_med_lysumma %>% 
   filter(lya %in% c("zz061", "zz062", "zz076", "zz096", "zz104"))

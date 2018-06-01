@@ -21,4 +21,8 @@ minalyor %>%
 
 View(årmedkullar)
 
-which(årmedkullar$n = )
+levels(fjallrav$denNr)
+fjallrav %>% 
+  filter(year %in% c("2003", "2006", "2009", "2012", "2016")) #dessa år fattas i filen! Det var åtminstone kullar 2016. Finns i rovbase####
+
+         

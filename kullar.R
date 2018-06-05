@@ -24,5 +24,7 @@ View(årmedkullar)
 levels(fjallrav$denNr)
 fjallrav %>% 
   filter(year %in% c("2003", "2006", "2009", "2012", "2016")) #dessa år fattas i filen! Det var åtminstone kullar 2016. Finns i rovbase####
+table(fjallrav)
+which((table(fjallrav$denNr)) == max(table(fjallrav$nValp)))= #ger ej error men spottar inte ut en lya heller. Vad är fel?####
 
          

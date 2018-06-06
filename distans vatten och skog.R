@@ -19,20 +19,28 @@ summary(skog)
 storavattenNV <- readOGR(dsn = file.choose(), layer = "mv_get")
 summary(storavattenNV)
 
+
+
 mindrevattenNV <- readOGR(dsn = file.choose(), layer = "hl_get")
+
+
 vattenNV <- gUnion(storavattenNV, mindrevattenNV)
-summary(vattenNV)
+
 
 View(storavattenNV)
 storavattenSV <- readOGR(dsn = file.choose(), layer = "mv_get")
 mindrevattenSV <- readOGR(dsn = file.choose(), layer = "hl_get")
 
+
+
 vattenSV <- gUnion(storavattenSV, mindrevattenSV)
 summary(vattenSV)
 
-vatten <- gUnion(vattenNV, vattenSV) #det gick bara lägga ihop två shapefiler itaget.####
 
-writeOGR(vatten, dsn ="./data/vattendrag_helags.shp", layer = "vatten", driver = "ESRI Shapefile") )
+vatten <- gUnion(vattenNV, vattenSV) #det gick bara lägga ihop två shapefiler i taget och det här funkar inte eftersom de nya filerna sparas som SpatialCollections.####
+summary(vatten)
+
+writeOGR(vatten, dsn ="./Rawdata/vattendrag_helags.shp", layer = "vatten", driver = "ESRI Shapefile")
 
 
 plot(skog, col = "green")

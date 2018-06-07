@@ -16,31 +16,9 @@ View(vegfjall)
 skog <- subset(vegfjall, VEGETATION == "Barrskog, lavristyp" | VEGETATION == "Barrskog, lavtyp" | VEGETATION == "Fuktig-våt barrskog" | VEGETATION == "Lavmarksbarrskog" | VEGETATION == "Lavmarkslövskog" | VEGETATION == "Mossmarksbarrskog" | VEGETATION == "Mossmarkslövskog" | VEGETATION == "Sumplövskog" | VEGETATION == "Torr-frisk barrskog")
 summary(skog)
 
-storavattenNV <- readOGR(dsn = file.choose(), layer = "mv_get")
-summary(storavattenNV)
+alla_vatten <- readOGR(dsn = file.choose(), layer = "vatten_alla", stringsAsFactors = FALSE)
+summary(alla_vatten)
 
-
-
-mindrevattenNV <- readOGR(dsn = file.choose(), layer = "hl_get")
-
-
-vattenNV <- gUnion(storavattenNV, mindrevattenNV)
-
-
-View(storavattenNV)
-storavattenSV <- readOGR(dsn = file.choose(), layer = "mv_get")
-mindrevattenSV <- readOGR(dsn = file.choose(), layer = "hl_get")
-
-
-
-vattenSV <- gUnion(storavattenSV, mindrevattenSV)
-summary(vattenSV)
-
-
-vatten <- gUnion(vattenNV, vattenSV) #det gick bara lägga ihop två shapefiler i taget och det här funkar inte eftersom de nya filerna sparas som SpatialCollections.####
-summary(vatten)
-
-writeOGR(vatten, dsn ="./Rawdata/vattendrag_helags.shp", layer = "vatten", driver = "ESRI Shapefile")
 
 
 plot(skog, col = "green")

@@ -1,9 +1,12 @@
 library("sp")
 library("rgdal")
 library("rgeos")
+library(dplyr)
 
 
-lyor  <- readOGR(dsn = file.choose(), layer = "lyor")
+lyor  <- readOGR(dsn = file.choose(), layer = "lyor", stringsAsFactors = FALSE)
+
+proj4string(lyor) <- CRS("+proj=utm +zone=33 +ellps=GRS80 +units=m +no_defs")
 summary(lyor) #den är projected redan!####
 plot(lyor, col ="red", pch = ".", cex = 3)
 
@@ -16,14 +19,37 @@ View(vegfjall)
 skog <- subset(vegfjall, VEGETATION == "Barrskog, lavristyp" | VEGETATION == "Barrskog, lavtyp" | VEGETATION == "Fuktig-våt barrskog" | VEGETATION == "Lavmarksbarrskog" | VEGETATION == "Lavmarkslövskog" | VEGETATION == "Mossmarksbarrskog" | VEGETATION == "Mossmarkslövskog" | VEGETATION == "Sumplövskog" | VEGETATION == "Torr-frisk barrskog")
 summary(skog)
 
-alla_vatten <- readOGR(dsn = file.choose(), layer = "vatten_alla", stringsAsFactors = FALSE)
+alla_vatten <- readOGR(dsn = file.choose(), layer = "vatten_sverigenorge", stringsAsFactors = FALSE)
 summary(alla_vatten)
 
 
 
 plot(skog, col = "green")
-plot(vattenNV, col = "royalblue1", lwd = 2) #det går inte plotta storavattenNV som lines eftersom det är sjöar med. R vill inte rita upp dem som linjer#
-lines(mindrevattenNV,"royalblue1", lwd = 1 )
+plot(alla_vatten, col = "royalblue1")
 points(lyor, col = "red", pch =".", cex = 3)
+
+dist_vatten<-apply(gDistance(lyor, alla_vatten,byid=TRUE),2,min)
+
+View(dist_vatten) #lynamnen kommer inte med men lyorna verkar ligga i samma ordning som i "lyor"-data frame#####
+
+dist_vatten<-as.data.frame(dist_vatten) #gör om från Spatial till vanlig data frame####
+colnames(dist_vatten) <- ("distans_till_vatten") #lägger till kolumnnamn
+dist_vatten
+class(dist_vatten)
+View(dist_vatten)
+
+lyor_data <- as.data.frame(lyor) #gör om från Spatial till vanlig data frame
+summary(lyor_data)
+class(lyor_data)
+lyor_data
+
+
+lyor_data<-lyor_data %>% 
+  bind_cols(dist_vatten)  #lägger till distans till datasetet
+
+lyor_data
+
+View(lyor_data)
+
 
 

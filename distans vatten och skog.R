@@ -2,7 +2,8 @@ library("sp")
 library("rgdal")
 library("rgeos")
 library(dplyr)
-
+install.packages("xlsx")
+library(writexl)
 
 lyor  <- readOGR(dsn = file.choose(), layer = "lyor", stringsAsFactors = FALSE)
 
@@ -26,8 +27,11 @@ plot(lyor, col ="red", pch = ".", cex = 3)
 #skog <-gUnion(svensk_skog, norsk_skog)
 #summary(skog)
 
-alla_vatten <- readOGR(dsn = file.choose(), layer = "vatten_sverigenorge", stringsAsFactors = FALSE)
-summary(alla_vatten)
+skog <- readOGR(dsn = file.choose(), layer = "skog_sverigenorge", stringsAsFactors = FALSE)
+summary(skog) #samma proj4strings som lyor. Den är projected####
+
+vatten <- readOGR(dsn = file.choose(), layer = "vatten_sverigenorge", stringsAsFactors = FALSE)
+summary(vatten) #samma proj4strings som lyor. Den är projected####
 
 
 
@@ -35,18 +39,19 @@ plot(skog, col = "green")
 plot(alla_vatten, col = "royalblue1")
 points(lyor, col = "red", pch =".", cex = 3)
 
-dist_vatten<-apply(gDistance(lyor, alla_vatten,byid=TRUE),2,min)
-dist_skog<-apply(gDistance(lyor, skog,byid=TRUE),2,min)#obs! saknas skogsvektorer runt en lya
-View(dist_skog)
-
-
+dist_vatten<-apply(gDistance(lyor, vatten,byid=TRUE),2,min)
 View(dist_vatten) #lynamnen kommer inte med men lyorna verkar ligga i samma ordning som i "lyor"-data frame#####
 
 dist_vatten<-as.data.frame(dist_vatten) #gör om från Spatial till vanlig data frame####
 colnames(dist_vatten) <- ("distans_till_vatten") #lägger till kolumnnamn
-dist_vatten
-class(dist_vatten)
-View(dist_vatten)
+
+dist_skog<-apply(gDistance(lyor, skog,byid=TRUE),2,min) #små trädplättar på kalfjället borttagna
+View(dist_skog)
+dist_skog<-as.data.frame(dist_skog)
+colnames(dist_skog) <-("distans_till_skog")
+
+
+
 
 lyor_data <- as.data.frame(lyor) #gör om från Spatial till vanlig data frame
 summary(lyor_data)
@@ -55,11 +60,12 @@ lyor_data
 
 
 lyor_data<-lyor_data %>% 
-  bind_cols(dist_vatten)  #lägger till distans till datasetet
+  bind_cols(dist_vatten, dist_skog)  #lägger till distans till datasetet
 
 lyor_data
 
 View(lyor_data)
 
+write_xlsx(lyor_data, path = "GIS-data/lyor_distans_vatten_skog.xlsx") #sparar den som excel-fil istället för csv så blir den enklare att manipulera i excel. Skrev ut den till GIS-data-mappen men flyttade den sen till lyor, gpspunkter och avstånd####
 
 

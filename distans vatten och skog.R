@@ -4,7 +4,7 @@ library("rgeos")
 library(dplyr)
 install.packages("xlsx")
 library(writexl)
-
+write
 lyor  <- readOGR(dsn = file.choose(), layer = "lyor", stringsAsFactors = FALSE)
 
 proj4string(lyor) <- CRS("+proj=utm +zone=33 +ellps=GRS80 +units=m +no_defs")
@@ -45,7 +45,7 @@ View(dist_vatten) #lynamnen kommer inte med men lyorna verkar ligga i samma ordn
 dist_vatten<-as.data.frame(dist_vatten) #gör om från Spatial till vanlig data frame####
 colnames(dist_vatten) <- ("distans_till_vatten") #lägger till kolumnnamn
 
-dist_skog<-apply(gDistance(lyor, skog,byid=TRUE),2,min) #små trädplättar på kalfjället borttagna
+dist_skog<-apply(gDistance(lyor, skog,byid=TRUE),2,min) #små trädplättar på kalfjället borttagna. Betyder "2" att bara andra värdet sparas? Första värdet är avståndet till sig själv, och det är noll.
 View(dist_skog)
 dist_skog<-as.data.frame(dist_skog)
 colnames(dist_skog) <-("distans_till_skog")

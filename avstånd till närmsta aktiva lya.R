@@ -4,6 +4,11 @@ library(sp)
 library(rgeos)
 library(rgdal)
 
+# DET STÄMMER INTE! DET ÄR FÄRRE KULLAR I RASMUS.KULLDATA TILL TOR ÄN I 
+# Lypositioner kullar 2000-2017 SWEREF99 per kull.csv FAST ALLA OMATADE KULLAR SKA VARA 
+# BORTTAGNA UR DEN FILEN. DET ÄR DÄRFÖR DET BLIR FEL I SLUTET.
+lyorperkull<-read.csv(file.choose(), stringsAsFactors = FALSE)
+
 # # Vi vill beräkna avstånd till närmsta föryngring.
 
 # Vi behöver sålunda följande
@@ -53,7 +58,7 @@ writeOGR(lypositionerKull, dsn ="./Lyor, gps-punkter och avstånd/lypositionerKu
 #nu kan jag läsa in shapefilen igen så att jag kan mäta####
 
 lypositionerSHP<-readOGR(file.choose()) # läser alltså in lypositionerKullTor.shp. Märk att R sparar om east som coords.x1 och north som coords.x2
-
+summary(lypositionerSHP)
 
 
 # Vi behöver en dataframe som har variablerna vi vill använda oss av, 
@@ -82,6 +87,8 @@ for(i in 1:length(yearFrame$yearlist)) {
 # saknas år 2000, därför fungerar inte första raden. Det saknas även ett par andra år. Lägg till
 # dem i csv-filen när skriptet är klart och kör det igen. Jag kan även lägga till 2018 när sommarens
 # inventering är klar om det hinns med.
+
+
 
 minimumdenDistance2000 <- apply(denDistance2000, 1, function(x) order(x, decreasing=F)[2])
 minimumdenDistance2001 <- apply(denDistance2001, 1, function(x) order(x, decreasing=F)[2])
@@ -112,18 +119,19 @@ SminimumdenDistance2001 <- cbind(lypositionerSHP[lypositionerSHP$year==2001,],
                                  lypositionerSHP[lypositionerSHP$year==2001,][minimumdenDistance2001,],
                                  apply(denDistance2001, 1, function(x) sort(x, decreasing=F)[2]))
 
-
+SminimumdenDistance2001
+litterDistance2001
 # Stoppa in i dataram för 2001
 litterDistance2001 <- as.data.frame(SminimumdenDistance2001@data$litterID)
 colnames(litterDistance2001) <- "litterID"
-litterDistance2001$distance <-  as.vector(SminimumdenDistance2001@data$structure.c.8667.09714956513..8667.09714956513....Names...c..45.../1000)
+litterDistance2001$distance <-  as.vector(SminimumdenDistance2001@data$structure.c.8667.09714956513..8667.09714956513.)
 litterDistance2001$year <-  SminimumdenDistance2001@data$year
 
 
 SminimumdenDistance2002 <- cbind(lypositionerSHP[lypositionerSHP$year==2002,],
                                  lypositionerSHP[lypositionerSHP$year==2002,][minimumdenDistance2002,],
                                  apply(denDistance2002, 1, function(x) sort(x, decreasing=F)[2]))
-
+SminimumdenDistance2002
 # Stoppa in i dataram för 2002
 litterDistance2002 <- as.data.frame(SminimumdenDistance2002@data$litterID)
 colnames(litterDistance2002) <- "litterID"
@@ -239,9 +247,10 @@ litterDistanceTotal <- rbind(litterDistance2001, litterDistance2002, litterDista
                              litterDistance2008, litterDistance2010, litterDistance2011, litterDistance2013, litterDistance2014, litterDistance2015,
                              litterDistance2017)
 #vissa lyor har inte fått något avstånd, därför funkar det inte att slå ihop dem.
-
-
-yearFrame$litterdistance
+# det blir problem med raderna! Mina är inte exakt samma som Rasmus eftersom jag använder omatade
+# kullar också. se till att siffrorna efter structure.c. är samma som i dataramen 
+# SminimumdenDistance20XX. De siffrorna är avståndet i meter och antalet avstånd måste stämma med
+# antalet kullar varje år.
 
 # Och så spottar vi ur oss filen. Tjohoo!
 write.csv(litterDistanceTotal, ":/Den and territory selection/Rawdata/distansnärmstaförynging.csv", row.names = F)

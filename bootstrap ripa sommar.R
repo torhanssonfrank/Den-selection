@@ -72,7 +72,31 @@ head(z)
 tail(z)
 boxplot(z$boot.mean ~ z$lya, main = "Ripspillning på aktiva och inaktiva lyor (n = 4 och 6). Bootstrap 10 000 gånger. P < 2e-16", ylab = "Medelvärde ripspillning")
 ?boxplot
-lya.aov<-aov(z$boot.mean ~ z$lya)
+lya.aov<-aov(z$boot.mean ~ z$lya) #det här funkar nog inte eftersom det blir lika många frihetsgrader som boootstrap-resamplingar.
 summary(lya.aov)
+?boot
+
+
+
+
+
+
+#testar ett Wilcoxon test utan bootstrap. Klara data som inte är normalfördelad och med låg power.
+aktivsumma
+fox <- as.data.frame(c(1,1,1,1))
+colnames(fox)<-"fox"
+fox
+x<-bind_cols(aktivsumma, fox)
+
+fox <- as.data.frame(c(0,0,0,0,0,0))
+colnames(fox)<-"fox"
+y <- bind_cols(inaktivsumma, fox)
+y
+fox.dens <- bind_rows(x,y)
+fox.dens
+boxplot(fox.dens$n ~ fox.dens$fox, names = c("inaktiva lyor (n = 6)", "aktiva lyor (n = 4)"), main = ("Högar med ripspillning på 12 km transekter runt fjällrävslyor, Helags"), 
+                                             ylab = ("ripspillningshögar"), ylim = c(0,50))
+?boxplot
+wilcox.test(fox.dens$n ~ fox.dens$fox)
 
 

@@ -4,11 +4,10 @@ library(sp)
 library(rgeos)
 library(rgdal)
 library(readxl)
+library(writexl)
 
-# DET STÄMMER INTE! DET ÄR FÄRRE KULLAR I RASMUS.KULLDATA TILL TOR ÄN I 
-# Lypositioner kullar 2000-2017 SWEREF99 per kull.csv FAST ALLA OMATADE KULLAR SKA VARA 
-# BORTTAGNA UR DEN FILEN. DET ÄR DÄRFÖR DET BLIR FEL I SLUTET.
-# EDIT: har efter ovanstående gjort en bättre sammanställning från flera filer. Den heter "min sammanställning plus BEBODDA_LYOR_HEF 00_10.xlsx"
+# Har använt mitt försök till sammanställning. Nu har jag avstånd för de lyorna. Borde vara alla avstånd jag behöver.
+
 
 
 # # Vi vill beräkna avstånd till närmsta föryngring.
@@ -323,7 +322,7 @@ litterDistanceTotal <- rbind(litterDistance2000,litterDistance2001, litterDistan
 
 litterDistanceTotal
 # Och så spottar vi ur oss filen. Tjohoo!
-write.csv(litterDistanceTotal, "Den and territory selection/Rawdata/distansnarmstaforynging.csv", row.names = F)
+write_xlsx(litterDistanceTotal, "Den and territory selection/Rawdata/distans närmsta förynging.xlsx")
 
 
 

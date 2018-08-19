@@ -4,6 +4,7 @@ library(maptools)
 library(rgeos)
 library(dplyr)
 library(tibble)
+library(writexl)
 
 
 #jag vill ha ut sannolikheten för lämmel i varje pixel inom en 1500 meter radie runt lyan.
@@ -44,6 +45,9 @@ head(lemmel)
 #byter plats på kolumnerna
 lemmel <- lemmel[c("Namn","medelvärde_lämmelprediktion_uppgångsår", "medelvärde_lämmelprediktion_toppår")] 
 
+head(lemmel)
+View(lemmel)
+write_xlsx(lemmel, path = "Den and territory selection/Rawdata/lämmelprediktion_medelvärde_topp_uppgång.xlsx")
 
 #nu vill jag ha värdena för lämmelsannolikhet för varje pixel inom en 1500 m buffer runt lyan
 lemmel_lista_topp <- extract(lemmel_topp,             # raster layer
@@ -57,7 +61,7 @@ lemmel_lista_uppgång <- extract(lemmel_uppgång,             # raster layer
                              buffer = 1500,     # buffer size, units depend on CRS
                              df=TRUE)            # return a dataframe?
 head(lemmel_lista_uppgång)
-
+max(lemmel_lista_uppgång$La.mmelprediktion_uppga.ngsa.r)
 
 
 class(lemmel_lista_uppgång) #blir en matrix av någon anledning
@@ -109,7 +113,11 @@ lemmel_lista_topp %>%
 lemmel_lista_topp <- lemmel_lista_topp[c("Namn","lämmelprediktion_toppår")] 
 head(lemmel_lista_topp)
 
+#Nu måste jag få fram andel bra lämmelhabitat per lybuffer
 max(lemmel_lista_uppgång$lämmelprediktion_uppgångsår)
-which(lemmel_lista_topp$Namn == "FSZZ008")
-max(lemmel_lista_topp$lämmelprediktion_toppår)
+length(which(lemmel_lista_topp$Namn == "FSZZ008")) #varför så många??? Pixlarna är ju jättestora
 
+head(lemmel_lista_uppgång)
+max(lemmel_lista_uppgång$lämmelprediktion_uppgångsår)
+
+View(lemmel_lista_uppgång)

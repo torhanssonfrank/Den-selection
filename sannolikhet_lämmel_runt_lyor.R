@@ -5,6 +5,8 @@ library(rgeos)
 library(dplyr)
 library(tibble)
 library(writexl)
+library(stringr)
+
 
 
 #jag vill ha ut sannolikheten för lämmel i varje pixel inom en 1500 meter radie runt lyan.
@@ -47,6 +49,15 @@ lemmel <- lemmel[c("Namn","medelvärde_lämmelprediktion_uppgångsår", "medelv�
 
 head(lemmel)
 View(lemmel)
+
+median(lemmel$medelvärde_lämmelprediktion_uppgångsår, na.rm = TRUE)
+mean(lemmel$medelvärde_lämmelprediktion_uppgångsår, na.rm = TRUE)
+max(lemmel$medelvärde_lämmelprediktion_uppgångsår, na.rm = TRUE)
+
+
+which(is.na(lemmel$medelvärde_lämmelprediktion_uppgångsår))
+which(is.na(lemmel$medelvärde_lämmelprediktion_toppår))
+
 write_xlsx(lemmel, path = "Den and territory selection/Rawdata/lämmelprediktion_medelvärde_topp_uppgång.xlsx")
 
 #nu vill jag ha värdena för lämmelsannolikhet för varje pixel inom en 1500 m buffer runt lyan
@@ -115,9 +126,166 @@ head(lemmel_lista_topp)
 
 #Nu måste jag få fram andel bra lämmelhabitat per lybuffer
 max(lemmel_lista_uppgång$lämmelprediktion_uppgångsår)
-length(which(lemmel_lista_topp$Namn == "FSZZ008")) #varför så många??? Pixlarna är ju jättestora
+length(which(lemmel_lista_topp$Namn == "FSZZ008")) #Själva pixlarna är inte på 500 x 500 meter. Det är bara upplösningen på NDVI. Pixlarna är typ 48 x 43 meter. Därför finns det fett många värden per lya..
 
 head(lemmel_lista_uppgång)
-max(lemmel_lista_uppgång$lämmelprediktion_uppgångsår)
 
+max(lemmel_lista_uppgång$lämmelprediktion_uppgångsår, na.rm = TRUE) #maximala sannolikheten är 1 för en pixel. Låter skumt för ett uppgångsår tycker Rasmus.
+min(lemmel_lista_uppgång$lämmelprediktion_uppgångsår, na.rm = TRUE)
 View(lemmel_lista_uppgång)
+
+
+#' Först plockar jag ut de pixlar som är bra habitat för lämmel under uppgångsår.
+#' Jag sätter 0,265 som gräns för bra lämmelhabitat. Det är det maximala medelvärdet för en enskild lya delat på
+#' två. Borde kanske ta median eller medelvärdet av medelvärdet istället.
+#' 
+uppgång_bra <- lemmel_lista_uppgång %>%
+  group_by(Namn) %>%
+  filter(lämmelprediktion_uppgångsår > ((max(lemmel$medelvärde_lämmelprediktion_uppgångsår, na.rm = TRUE))/2)) %>% 
+  count(lämmelprediktion_uppgångsår) %>% 
+  summarise(bra_lämmelhabitat = sum(n))
+  
+head(uppgång_bra)
+
+#' Karin tyckte jag skulle ha tre nivåer av lämmelhabitat. Gör en medelbra. Tar spannet
+#' mellan 0,256 och medianen så länge.
+
+uppgång_medel <- lemmel_lista_uppgång %>%
+  group_by(Namn) %>%
+  filter(lämmelprediktion_uppgångsår < ((max(lemmel$medelvärde_lämmelprediktion_uppgångsår, na.rm = TRUE))/2),
+         lämmelprediktion_uppgångsår > median(lemmel$medelvärde_lämmelprediktion_uppgångsår, na.rm = TRUE)) %>% 
+  count(lämmelprediktion_uppgångsår) %>% 
+  summarise(medelbra_lämmelhabitat = sum(n))
+
+head(uppgång_medel)
+
+#' plockar även ut dåliga habitat. Tar de som är lägre än medianen så länge
+
+uppgång_dålig <- lemmel_lista_uppgång %>%
+  group_by(Namn) %>%
+  filter(lämmelprediktion_uppgångsår < median(lemmel$medelvärde_lämmelprediktion_uppgångsår, na.rm = TRUE)) %>% 
+  count(lämmelprediktion_uppgångsår) %>% 
+  summarise(dåliga_lämmelhabitat = sum(n))
+
+head(uppgång_dålig)
+
+alla_habitat <- lemmel_lista_uppgång %>%
+  group_by(Namn) %>%
+  count(lämmelprediktion_uppgångsår) %>% 
+  summarise(alla_lämmelhabitat = sum(n))
+
+
+
+View(alla_habitat)
+length(uppgång_bra$Namn)
+length(uppgång_medel$Namn)
+length(uppgång_dålig$Namn)
+length(alla_habitat$Namn) #den innehåller fler lyor än uppgång_bra, uppgång_medel och uppgång_dålig
+
+
+#' alla_habitat innehåller de lyor som har NA på 
+#' lämmelsannolikhet eftersom de inte täcks in av rastern. Måste lokalisera vilka
+#' det är och ta bort dem så att kolumnerna är lika långa. Koden nedan gör detta.
+#' ! betyder alla som finns i alla_habitat som inte finns i uppång_bra. Uppgång_bra har lika många 
+#' lyor som uppgång_medel och uppgång_dålig
+#' 
+att_ta_bort<-alla_habitat[!alla_habitat$Namn %in% uppgång_bra$Namn, ] 
+
+att_ta_bort$Namn
+
+alla_habitat <- subset(alla_habitat, !Namn %in% c(paste(att_ta_bort$Namn))) #tar bort lyorna "FSZZ041", "FSZZ047", "FSZZ049", "FSZZ086", "FSZZ093".
+
+length(alla_habitat$Namn) #nu är de borta
+
+#' Nu kan vi lägga in dem i samma dataram. spara som vektorer först
+Namn<- uppgång_bra$Namn
+bra_lämmelhabitat<- uppgång_bra$bra_lämmelhabitat
+medelbra_lämmelhabitat<- uppgång_medel$medelbra_lämmelhabitat
+dåliga_lämmelhabitat <- uppgång_dålig$dåliga_lämmelhabitat
+alla_lämmelhabitat<-alla_habitat$alla_lämmelhabitat
+
+kombinerad <- data.frame(Namn, bra_lämmelhabitat, medelbra_lämmelhabitat, dåliga_lämmelhabitat, alla_lämmelhabitat)
+
+head(kombinerad)
+
+proportioner <- kombinerad %>% 
+  mutate(andel_bra_lämmelhabitat_uppgångsår = bra_lämmelhabitat/alla_lämmelhabitat) %>% 
+  mutate(andel_medelbra_lämmelhabitat_uppgångsår = medelbra_lämmelhabitat/alla_lämmelhabitat) %>% 
+  mutate(andel_dåliga_lämmelhabitat_uppgångsår = dåliga_lämmelhabitat/alla_lämmelhabitat)
+
+head(proportioner)
+
+View(proportioner)
+
+#kollar så att andelarna summerar till 1. Det gör de
+stopifnot((proportioner$andel_bra_lämmelhabitat_uppgångsår + 
+             proportioner$andel_medelbra_lämmelhabitat_uppgångsår + 
+             proportioner$andel_dåliga_lämmelhabitat_uppgångsår) == 1)
+
+
+#' kommer säkert behöva skriva över filen eftersom gränsvärdena för bra, medelbra och dåligt lämmelhabitat inte
+#' är speciellt smart satta
+write_xlsx(proportioner, path = "Rawdata/andel_lämmelhabitattyper_per_lya.xlsx")
+
+#' Jag gör en till uppdelning i tre, men den här gången
+#' tar jag bra lyor som den översta tredjedelen av alla sannolikheter. Medelbra som
+#' den mittersta delen och dåliga som den
+#' lägsta tredjedelen.
+
+#' först sorterar jag sannolikhetsvärdena efter storlek med arrange()
+#' kommandot desc() gör att värdena sorteras descending, dvs från stor
+#' till liten
+
+?arrange
+
+sorterade_lämlar<-lemmel_lista_uppgång %>% 
+  arrange(desc(lämmelprediktion_uppgångsår))
+  
+
+View(sorterade_lämlar)
+
+length(sorterade_lämlar$lämmelprediktion_uppgångsår)
+
+#' Det finns 241820 rader med sannolikheter. Funktionen slice i
+#' dplyr plockar ut rader baserat på position. Jag plockar ut den översta tredjedelen
+#' först. Dessa är bra lämmelhabitat
+
+#'Räknar ut den översta tredjedelen av värdena.
+#'Round avrundar. Man kan inte specificera kolumn i slice,
+#'den tar bara alla rader. Det gör ingenting för mig eftersom jag
+#'vill ha med båda kolumnerna
+round((length(sorterade_lämlar$lämmelprediktion_uppgångsår)/3))
+
+
+bra_lämmelhabitat_2<- sorterade_lämlar %>%
+  slice(1:round((length(sorterade_lämlar$lämmelprediktion_uppgångsår)/3) %>% 
+                  count(lämmelprediktion_uppgångsår) %>% 
+                  summarise(bra_lämmelhabitat = sum(n))
+                ))
+
+length(bra_lämmelhabitat_2$lämmelprediktion_uppgångsår) #längden stämmer
+
+medelbra_lämmelhabitat_2 <-sorterade_lämlar %>% 
+  slice(round((length(sorterade_lämlar$lämmelprediktion_uppgångsår)/3)):
+          (2*round((length(sorterade_lämlar$lämmelprediktion_uppgångsår)/3))))
+
+length(medelbra_lämmelhabitat_2$lämmelprediktion_uppgångsår) #längden stämmer
+
+dåliga_lämmelhabitat_2 <-sorterade_lämlar %>% 
+  slice((2*round((length(sorterade_lämlar$lämmelprediktion_uppgångsår)/3))):
+          max(length(sorterade_lämlar$lämmelprediktion_uppgångsår)))
+
+length(dåliga_lämmelhabitat_2$lämmelprediktion_uppgångsår)
+          
+#stoppar in alla värden i vektorer och gör ny dataram
+bra_lämmelhabitat_2 <- bra_lämmelhabitat_2$lämmelprediktion_uppgångsår
+medelbra_lämmelhabitat_2 <- medelbra_lämmelhabitat_2$lämmelprediktion_uppgångsår
+dåliga_lämmelhabitat_2 <- dåliga_lämmelhabitat_2$lämmelprediktion_uppgångsår
+
+kombinerad_2 <-data.frame(Namn, bra_lämmelhabitat_2,medelbra_lämmelhabitat_2, dåliga_lämmelhabitat_2, alla_lämmelhabitat)
+
+proportioner_2 <- kombinerad_2 %>% 
+  group_by(Namn) %>% 
+  mutate(andel_bra_lämmelhabitat_uppgångsår = bra_lämmelhabitat_2/alla_lämmelhabitat) %>% 
+  mutate(andel_medelbra_lämmelhabitat_uppgångsår = medelbra_lämmelhabitat_2/alla_lämmelhabitat) %>% 
+  mutate(andel_dåliga_lämmelhabitat_uppgångsår = dåliga_lämmelhabitat_2/alla_lämmelhabitat)

@@ -127,8 +127,10 @@ coordinates(red_fox_copy) <- c("Easting90", "Northing90")
 summary(red_fox_copy) #inte projected än
 
 #' Koordinaterna är angedda i det gamla svenska koordinatsystemet
-#' RT90. Jag hittade koden i QGIS genom att högerklicka på ett lager och välja
-#' set CRS. Där kan man söka upp olika koordinatsystem. Där finner man också koden.
+#' RT90. Finns flera hemsidor med EPSG-koder för koordinatsystemen. Enklast att
+#' använde +init och EPSG-koden för att sätta CRS. Det finns 4proj koder som är 
+#' jättelånga också men det är onödigt. Mycket enklare att se så att man har gjort rätt
+#' med EPSG.
 proj4string(red_fox_copy) <- CRS("+init=EPSG:3021")
 
 
@@ -137,6 +139,8 @@ summary(red_fox_copy) #RT90 och projected
 
 CRS.new <- CRS("+init=EPSG:3006") #sparar SWEREFF99 i ett objekt. Den långa raddan jag använde innan var fel! Den här förkortningen funkar.
 
+#' spTransform kan man bara använda när ett spatialobjekt redan har ett koordinatsystem och man ska byta till
+#' ett annat.
 red_fox_copy_sweref <- spTransform(red_fox_copy, CRS.new) #nu är koordinaterna i SWEREF! KING!
 plot(red_fox_copy_sweref, col = "red")
 

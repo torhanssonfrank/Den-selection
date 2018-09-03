@@ -10,14 +10,16 @@ library(readxl)
 
 
 
-lybuffer <- readOGR(dsn = file.choose(), layer = "lybuffer", stringsAsFactors = FALSE)
-proj4string(lybuffer) <- CRS("+proj=utm +zone=33 +ellps=GRS80 +units=m +no_defs")
+lybuffer <- readOGR(dsn = file.choose(), layer = "lybuffer", stringsAsFactors = FALSE) #läser in filen lybuffer.shp
+CRS.new <- CRS("+init=EPSG:3006")
+lybuffer <- spTransform(lybuffer, CRS.new) 
+
 summary(lybuffer)
 plot(lybuffer, col = "red")
 writeOGR(lybuffer, dsn ="./Geodata/buffer runt lyor/lybuffer_sweref.shp", layer = "lybuffer", driver = "ESRI Shapefile") #enklast att göra om den till sweref i R.
 
 
-myrar <- readOGR(dsn = file.choose(), layer = "myr_runt_lyor_area", stringsAsFactors = FALSE) #viktigt med stringsAsFactors = FALSE. Annars blir det fel när man ändrar siffror till numeric.
+myrar <- readOGR(dsn = "./Geodata/myr runt lyor/myr_runt_lyor_alla.shp", layer = "myr_runt_lyor_alla", stringsAsFactors = FALSE) #viktigt med stringsAsFactors = FALSE. Annars blir det fel när man ändrar siffror till numeric.
 summary(myrar)
 myrar <- as.data.frame(myrar) #gör om från spatial till data frame
 
@@ -41,12 +43,14 @@ myr_area<-myr_area %>%
   group_by(Namn,Kommentar, N, E) %>% 
   summarise(area_myr = sum(Nyarea))
 
-nrow(myr_area) #alla lyor är inte med här eftersom de som inte har någon area följer med. Endast 72 är med
+nrow(myr_area) #alla lyor är inte med här eftersom de som inte har någon area följer med. Endast 74 är med
 View(myr_area)
 
-alla_lyor<- as.data.frame(lyor)
+alla_lyor<- readOGR(dsn = "./Lyor, kullar, gps-punkter, yta och avstånd/Lyor helags alla.shp", layer = "Lyor helags alla", stringsAsFactors = FALSE)
 
-nrow(alla_lyor) #här är alla lyor. 78 stycken
+nrow(alla_lyor) #här är alla lyor. 80 stycken
+
+alla_lyor <- as.data.frame(alla_lyor)
 
 head(alla_lyor)
 
@@ -63,7 +67,8 @@ head(alla_lyor)
 
 alla_myrlyor <- bind_rows(överblivna_lyor, myr_area)
 
-nrow(alla_myrlyor) # nu är det 78 lyor varav 6 inte har någon myrarea.
+nrow(alla_myrlyor) # nu är det 80 lyor varav 6 inte har någon myrarea.
+View(alla_myrlyor)
 
 write_xlsx(alla_myrlyor, path = "Lyor, kullar, gps-punkter, yta och avstånd/Area med myrmark med 1,5 km radie runt varje lya.xlsx")
 

@@ -1,5 +1,8 @@
 #Distance sampling för ripbajs, sommar.
+install.packages("mmds") # mixture models distance sampling
+??mmds
 
+library(mmds)
 library(Distance)
 library(knitr)
 library(gdata)
@@ -12,10 +15,12 @@ library(writexl)
 library(ggplot2)
 library(lubridate)
 
+
+
 #' läser in tor.riptransekter helags sommar 2018 modifierade RS_avstånd för dubbla högar. 
 #' I den filen ligger alla ripskitshögarna på en ensam rad. Jag har gjort dubletter
 #' av de rader som hade dubbla högar (var bara 3. Jag nästan alla högar som separata
-#' obsar under datainsamlingen) och lagt till 10 cm på den ena.
+#' obsar under datainsamlingen) och lagt till 10 cm på den ena.Tagit bort "m" ur meterkolumnen
 rip.orginal<-read_xlsx("Rawdata/tor.riptransekter helags sommar 2018 modifierade RS_avstånd för dubbla högar.xlsx") 
 View(rip.orginal)
 
@@ -29,7 +34,7 @@ ripskit <- "RS"
 #' på ripskiten. Distansen jag har är alltså redan perpendicular-distansen.
 skit_dist <- rip.orginal %>%
   filter(observation %in% ripskit) %>% 
-  select(lya, observation, distans)
+  select(lya, observation, distans, Höjd)
   
 
 View(skit_dist)
@@ -41,14 +46,28 @@ hist(skit_dist$distans, xlab = "perpendicular distance from transect (m)", main 
 
 #byter namn på kolumnerna så att Distance känner igen dem
 names(skit_dist)
-colnames(skit_dist) <- c("Sample.Label", "observation", "distance")
-
+colnames(skit_dist) <- c("Sample.Label", "observation", "distance", "elevation")
+class(skit_dist$elevation)#numeric
 head(skit_dist)
 
 #plockar bort observation
 skit_dist <-skit_dist %>% 
   select(-observation)
 
+#' Gör en covariate med fyra olika höjdklasser som proxy för 
+#' växtlighet. Den rikare växtligheten kan ha gjort det 
+#' svårare för mig att upptäcka ripskitar på längre avstånd
+min(skit_dist$elevation)
+max(skit_dist$elevation)
+attach(skit_dist)
+skit_dist$elevation.bin[elevation <= (900)] <- "<900"
+skit_dist$elevation.bin[elevation > (900) &
+                  elevation <= (1000)] <- "<1000"
+skit_dist$elevation.bin[elevation > (1000) &
+                          elevation <= (1100)] <- "<1000"
+skit_dist$elevation.bin[elevation > (1100)] <- "<1169"
+detach(skit_dist)
+View(skit_dist)
 #kanske måste ha alla kolumner för att det ska funka
 namevector1 <-"Area"
 skit_dist[ ,namevector1] <- (1500^2) * pi #kör en area som är samma som lybuffer
@@ -70,19 +89,21 @@ zz075 12100
 zz061 12400
 
 transects2 <- data.frame(Effort = c(12100,12100,11800, 12100, 12700,11900, 12000, 11700, 12100, 12400),
-                        Sample.Label = c("zz014", "zz096", "zz042", "zz104", "zz020", "zz062", "zz033", "zz076", "zz075", "zz061"))
+                        Sample.Label = c("zz014", "zz096", "zz042", "zz104", "zz020", "zz062", "zz033", "zz076", "zz075", "zz061"), stringsAsFactors = FALSE)
 class(transects2$Effort)#numeric
-
+class(transects2$Sample.Label)#character
 
 
 skit_dist <- skit_dist %>% 
   left_join(transects2, by = "Sample.Label")
 
-transects
+
 View(skit_dist)
 
+class(skit_dist$distance)
 class(skit_dist$Area)
 class(skit_dist$Effort)
+class(skit_dist$elevation)
 
 class(skit_dist) # DEN VAR BÅDE DATAFRAME, TBL och TBL_DF på samma gång! Därför funkade det inte att lägga på en detection function. Det måste vara en ren data frame
 skit_dist <- as.data.frame(skit_dist) #ändrar om till data frame
@@ -91,142 +112,137 @@ max(skit_dist$distance)
 #'observationen längst från linjen var 3,42 meter. Sätter truncation till 3 m
 #'så länge. Kommer nog få justera ned det senare.
 
+length(skit_dist$distance) # 214 skitar. Alltså mycket data.
+hist(skit_dist$distance, breaks = 100, xlim = c(0, 1.5)) #en "bump" i datat vid 0,3 - 0,4. Inte bra. Det blir svårt att sätta en detection function.
+
+
+View(skit_dist)
+par(mfrow=c(1,2))
 #sätter en half-normal detection funktion först.
 
-rs.hn.df <- ds(skit_dist, truncation = 3, adjustment = NULL) # funkar inte! Passar
+rs.hn.df <- ds(skit_dist, truncation = 1.5, adjustment = NULL) # funkar inte! Funkar inte att ändra method i optim heller.
 # datat för dåligt!
 summary(rs.hn.df)
 
+
 ## ÖKA model fit med adjustments ##
 
-rs.hn.df.cos <- ds(skit_dist, truncation = 3) #funkar inte!
-summary(hn.df.cos)
-plot(hn.df.cos, main="Half-normal detection function with cosine adjustment for ptarmigan transects")
-gof_ds(hn.df.cos, chisq = TRUE) #goodness of fit
-#'mer om goodness of fit (måste kolla i chrome): https://workshops.distancesampling.org/online-course/syllabus/Chapter2/
-#'p-värde på 0.95. Ett högt p-värde är bra. Betyder att det är liten skillnad mellan datan 
-#'och den förväntade linjen. Med chi square kan man se hur bra min half normal detection function förutspår 
-#'datan mellan olika interval i meter. Vi ser att mellan 0 och 25 meter förutspår half-normal
-#' att det bör vara 37,49 ripor. Jag såg 35. Chi square är då lågt (0.166) eftersom detection function
-#' är nära det faktiska observerade antalet. mellan 125 - 150 meter och 150 - 175 meter är det sämre.
-#' Jag såg 14 ripor mellan 125 och 150 meter men borde ha sett 9,75. Därför får jag ett högt chi square (1.85).
-#' Det är ännu sämre mellan 225 och 250 meter. Jag såg 4 men borde ha sett 1,57 enligt modellen. 
-#' Här kan jag alltså överväga att sätta truncation till 225 meter istället för 300 meter.
+rs.hn.df.cos <- ds(skit_dist, truncation = 1.5) #cosine adjustment. funkar inte!
+
 
 # Half-normal med Hermite polynomial adjustment
-hn.df.hermite <- ds(rip_perp, truncation = 300, adjustment = "herm")
-summary(hn.df.hermite)
-gof_ds(hn.df.hermite, chisq = TRUE ) #dålig fit
+rs.hn.df.hermite <- ds(skit_dist, truncation = 1.5, adjustment = "herm") #funkar inte!
+
 
 # Hazard-rate detection function
-hr.df <- ds(rip_perp, truncation=300, key= "hr", adjustment = NULL)
-summary(hr.df)
-plot(hr.df, main="Hazard-rate detection function for ptarmigan transects")
-gof_ds(hr.df, chisq = TRUE )
+rs.hr.df <- ds(skit_dist, truncation=1.5, key= "hr", adjustment = NULL) #funkar inte
+
 
 # Hazard-rate detection function med cosine adjustment
-hr.df.cos <- ds(rip_perp, truncation=300, key= "hr")
-summary(hr.df.cos)
-gof_ds(hr.df.cos, chisq = TRUE )
-plot(hr.df, main="Hazard-rate detection with cosine adjustment function for ptarmigan transects")
+rs.hr.df.cos <- ds(skit_dist, truncation=1.5, key= "hr") #funkar inte
+
+
 
 # Hazard-rate detection function med simple polynomial adjustment
-hr.df.poly <- ds(rip_perp, truncation = 300, key = "hr", adjustment = "poly")
-summary(hr.df.poly)
-gof_ds(hr.df.poly, chisq = TRUE ) #bättre fit. P = 0.90 med bra qq-plot
-plot(hr.df.poly)
+rs.hr.df.poly <- ds(skit_dist, truncation = 1.5, key = "hr", adjustment = "poly")
+
 
 #' Börjar med en ny df fourier/uniform med cosine adjustment. Den måste ha cosine annars funkar den inte. 
 #' Behöver inte specificera order
-fourier.df.cos <- ds(rip_perp, truncation=300, key = "unif") # cos är default
-summary(fourier.df.cos)
-gof_ds(fourier.df.cos, chisq = TRUE ) # inte så bra qq-plot. P = 0.37
-plot(fourier.df.cos)
+rs.fourier.df.cos <- ds(skit_dist, truncation=1.5, key = "unif") # cos är default
+summary(rs.fourier.df.cos, chisq = TRUE)
+gof_ds(rs.fourier.df.cos) #mindre standard error
+plot(rs.fourier.df.cos, main = "Uniform")
+
+
+"Uniform med polynomial också"
+rs.fourier.df.poly <- ds(skit_dist, truncation=1.5, key = "unif", adjustment = "poly") #
+summary(rs.fourier.df.poly)
+gof_ds(rs.fourier.df.poly, chisq = TRUE) #mindre standard error
+plot(rs.fourier.df.poly, main = "Uniform med simple polynomial")
+
+#testar Sample.Label som covariate med half-normal
+rs.hn.df.transect <- ds(skit_dist, truncation = 1.5, adjustment = NULL, formula = ~as.factor(Sample.Label))
+summary(rs.hn.df.transect) #ganska stort standard error
+gof_ds(rs.hn.df.transect, chisq = TRUE)
+plot(rs.hn.df.transect)
+
+
+#testar Sample.Label som covariate med hazard rate. Är nog inte en så bra idé att använda Sample.Label som covariate. Finns ingen smart biologisk förklaring. Höjd över havet är bättre.
+rs.hr.df.transect <- ds(skit_dist, truncation = 1.5, adjustment = NULL, key = "hr", formula = ~as.factor(Sample.Label))
+summary(rs.hr.df.transect)
+gof_ds(rs.hr.df.transect, chisq = TRUE) # p = 0.375. Stor standard error. Dåligt.
+plot(rs.hr.df.transect)
+
+#Går inte att köra fourier/uniform med covariates så hoppar den
+
+#testar elevation.bin som covariate med half normal
+rs.hn.df.elev <- ds(skit_dist, truncation = 1.5, adjustment = NULL, formula = ~as.factor(elevation.bin))
+summary(rs.hn.df.elev)
+gof_ds(rs.hn.df.elev, chisq = TRUE) # ok standard error men lågt p värde
+plot(rs.hn.df.elev)
+
+#testar elevation.bin som covariate med hazard rate
+rs.hr.df.elev <- ds(skit_dist, truncation = 1.5, adjustment = NULL, key ="hr", formula = ~as.factor(elevation.bin))
+summary(rs.hr.df.elev)
+gof_ds(rs.hr.df.elev, chisq = TRUE) # högre standard error men högre p värde = 0.227. Bättre qq än half-normal med elevation.bin
+plot(rs.hr.df.elev, main = "Hazard-rate with elevation covariate")
+
+
+#testar med adjustment cosinus order 2
+rs.hr.df.elev.cos <- ds(skit_dist, truncation = 1.5, adjustment = "cos", key ="hr", order = 2, monotonicity = FALSE, formula = ~as.factor(elevation.bin))
+summary(rs.hr.df.elev.cos)
+gof_ds(rs.hr.df.elev.cos, chisq = TRUE)
+plot(rs.hr.df.elev.cos)
+
+# testar med cosinus order 3
+rs.hr.df.elev.cos3 <- ds(skit_dist, truncation = 1.5, adjustment = "cos", key ="hr", order = 3, monotonicity = FALSE, formula = ~as.factor(elevation.bin))
+summary(rs.hr.df.elev.cos3)
+gof_ds(rs.hr.df.elev.cos3, chisq = TRUE)
+plot(rs.hr.df.elev.cos3)
+
+check.mono(rs.hr.df.elev.cos3, plot = TRUE)
+?check.mono
+
+# Mixture model detection function package MMDS
+
+rs.df.mix <- fitmix(skit_dist, width = 1.5 , model.formula = ~as.factor(elevation.bin)) #funkar inte. Paketet verkar inte fungera
+summary(rs.df.mix)
+
+
+?fitmix
 #' Jämför AIC-scores för alla modellerna. Om skillnaden är mindre än 2 är det bäst att ta den enklare
-#' modellen, vilket är half-normal eftersom hazard rate lägger till en extra parameter. 
-#' Half normalmed cosine adjustment är dock  mindre än hazard rate i det här fallet så då blev valet lätt. 
-summarize_ds_models(hn.df, hn.df.cos, hn.df.hermite, hr.df, hr.df.cos, hr.df.poly, fourier.df.cos)
-#' det som är lite störigt med summarize_ds_models är att namnen på detection
-#' functions inte syns så tydligt. Det står siffror längst till vänster som anger
-#' positionen som detection function blev inläst. hn.df är alltså 1 eftersom jag
-#' skrev in den först i raddan över. hn.df.cos är nummer 2. Vi kan se att två har 0
-#' i deltaAIC. den har alltså lägst AIC.
+#' modellen.
+summarize_ds_models(rs.fourier.df.cos, rs.hn.df.transect, rs.hr.df.transect,rs.hn.df.elev, rs.hr.df.elev, rs.hr.df.elev.cos, rs.hr.df.elev.cos3, rs.fourier.df.poly)
+#' elevation med cosinus (order 3) är bäst men den innehåller både adjustment och covariate vilket kan
+#' vara dåligt eftersom detection probability kan bli högre än 1 i vissa fall eftersom monotonicity
+#' är avslaget. Får inte funktionen check.mono att fungera. Paketet med mixture models (mmds) vill inte 
+#' fungera heller och det är gammalt och hittar inga trådar om paketet online.
+mrds::check.mono(rs.fourier.df.cos)
 
-#Vi kan printa ut alla AIC-scores för att göra det tydligare.
-
-AIC(hn.df) # 1481.226 (df=1)
-AIC(hn.df.cos)# 1476.233 (df=3)
-AIC(hn.df.hermite) # 1481.226 (df=1)
-AIC(hr.df) # 1482.958 (df=2) hazard rate lägger till en extra parameter.
-AIC(hr.df.cos) # 1477.127 (df=4) hazard rate lägger till en extra parameter.
-AIC(hr.df.poly)# 1478.574 (df=3)
-AIC(fourier.df.cos) #1480.189 (df=3)
-
-#' vi kan lägga till fler parametrar till detection function, till exempel väder och tid på dagen.
-#' väder och period måste vara sparad som class factor. Vi har redan bestämt oss för half-normal
-#' så vi försöker bara förbättra den. Vi skiter alltså i hazard rate.
-
-
-# först utan adjustments. Det är säkrast
-hn.df.weather <- ds(rip_perp, truncation=300, formula = ~as.factor(weather), adjustment = NULL)
-hn.df.period <- ds(rip_perp, truncation=300, formula = ~as.factor(period), adjustment = NULL)
-#båda på samma gång
-hn.df.weather.period <- ds(rip_perp, truncation=300, formula = ~as.factor(weather)+as.factor(period), adjustment = NULL)
-
-#' testar med cosinus adjustment. För att det ska funka med covariates måste man 
-#' slå av monotonicity, det vill säga att funktionen antar att upptäckta djur
-#' minskar med avståndet från linjen. Det här kan bli helknäppt, så man måste kolla
-#' grafen noga efteråt. Order måste också anges
-hn.df.weather.cos <- ds(rip_perp, truncation=300, formula = ~as.factor(weather), adjustment = "cos", order = 2, monotonicity = FALSE)
-plot(hn.df.weather.cos)
-check.mono(hn.df.weather.cos$ddf,plot=TRUE,n.pts=100) #sannolikheten att se ripor stiger aldrig med ökat avstånd
-gof_ds(hn.df.weather.cos) # sämre qq-plot och p = 0.386
-
-hn.df.period.cos <- ds(rip_perp, truncation=300, formula = ~as.factor(period), adjustment = "cos", order = 2, monotonicity = FALSE)
-plot(hn.df.period.cos) #minskar hela vägen med ökat avstånd
-gof_ds(hn.df.period.cos) #dålig qq-plot och p = 0.396
-
-
-hn.df.weather.period.cos <- ds(rip_perp, truncation=300, formula = ~as.factor(weather)+as.factor(period), adjustment = "cos", order = 2, monotonicity = FALSE)
-plot(hn.df.weather.period.cos) #minskar med ökat avstånd hela vägen
-gof_ds(hn.df.weather.period.cos) #sämre qq-plot, p = 0.384
-
-
-
-summarize_ds_models(hn.df.cos, hn.df.weather, hn.df.period, hn.df.weather.period, hn.df.weather.cos, hn.df.period.cos, hn.df.weather.period.cos)
-AIC(hn.df.cos) #den här är fortfarande bäst (lägst). I summeringen är den numrerad 1.
-
-#' Model gives a short description of fitted model (this may be ambiguous so the row numbers may be helpful
-#'  in working out which model is which).
-#' Formula describes the covariate model (just ~1 when there are no covariates).
-#' pars gives the number of parameters in the model.
-#' P_a lists the average probability of detection.
-#' CV(P_a) gives the coefficient of variation of average probability of detection giving an indication of 
-#' uncertainty in the model (more on this in How certain are we in our estimates?).
-#' AIC finally lists Akaike’s information criterion for the model
-
-
-plot(hn.df.weather.period)
-covar.fit <- ddf.gof(hn.df.weather.period$ddf, main = "Weather and period of day as covariates") #plottar qq-plot. Syns tydligt att den blev sämre
-message <- paste("Cramer von-Mises W=", round(covar.fit$dsgof$CvM$W,3), 
-                 "\nP=", round(covar.fit$dsgof$CvM$p,3))
+plot(rs.hr.df.elev.cos3)
+elev.cos.fit <- ddf.gof(rs.hr.df.elev.cos3$ddf, main = "Hazard rate with elevation covariate and order 3 cosine adjustment") #plottar qq-plot. Syns tydligt att den blev sämre
+message <- paste("Cramer von-Mises W=", round(elev.cos.fit$dsgof$CvM$W,3), 
+                 "\nP=", round(elev.cos.fit$dsgof$CvM$p,3))
 text(0.6, 0.1, message, cex=0.8) #första delen anger positionen i grafen där texten "message" ska klistras in
 
-plot(hn.df.cos)
-covar.fit2 <- ddf.gof(hn.df.cos$ddf, main = "Half-normal detection function, no covariates") #plottar qq-plot. Syns tydligt att den blev sämre
-message <- paste("Cramer von-Mises W=", round(covar.fit2$dsgof$CvM$W,3), 
-                 "\nP=", round(covar.fit2$dsgof$CvM$p,3))
+plot(rs.fourier.df.cos)
+unif.fit <- ddf.gof(rs.fourier.df.cos$ddf, main = "Uniform fit, no covariates") #plottar qq-plot. Syns tydligt att den blev sämre
+message <- paste("Cramer von-Mises W=", round(unif.fit$dsgof$CvM$W,3), 
+                 "\nP=", round(unif.fit$dsgof$CvM$p,3))
 text(0.6, 0.1, message, cex=0.8)
 
-# Abundance estimation finns i summary. Eftersom transekterna ligger under region label får jag abundance per lya direkt
-summary(hn.df.cos)
+#' Abundance estimation finns i summary. Eftersom transekterna ligger under region label får jag abundance per lya direkt
+#' Modellerna med elevation som covariate och cos adjustments är egentligen bättre men tror
+#' inte att jag borde använda dem. Har inte fått till check uniform än.
+summary(rs.fourier.df.cos)
 
 #' Gör en tabel med kable från paketet knitr. 
 #' Står beskrivet i Miller et al. Distance sampling in R. (har på PDF)
 #' här förklaras uncertainty: http://converged.yt/RDistanceBook/distance-uncertainty.html#fn6
-rip_table <- summary(hn.df.cos)$dht$individuals$N
-rip_table$lcl <- rip_table$ucl <- rip_table$df <- NULL
-colnames(rip_table) <- c("Den Nr", "$\\hat{N}$", "$\\text{se}(\\hat{N}$)",
+skit_table <- summary(rs.fourier.df.cos)$dht$individuals$N
+skit_table$lcl <- skit_table$ucl <- skit_table$df <- NULL
+colnames(skit_table) <- c("Dropping piles", "$\\hat{N}$", "$\\text{se}(\\hat{N}$)",
                          "$\\text{CV}(\\hat{N}$)")
 
 
@@ -235,13 +251,14 @@ kable(rip_table, format = "markdown")
 
 #printar en excelfil
 
-ripa_estimated <- summary(hn.df.cos)$dht$individuals$N
+ripskit_estimated <- summary(rs.fourier.df.cos)$dht$individuals$N
+ripskit_estimated
 
-ripa_estimated<-ripa_estimated %>% 
-  dplyr::select(Label, Estimate) %>% 
+ripskit_estimated<-ripskit_estimated %>% 
+  select(Label, Estimate) %>% 
   slice(-11) #nedersta raden innehåller totala antalet ripor. Tar bort den
 
-colnames(ripa_estimated) <- c("lya", "uppskattat_antal_ripor")
+colnames(ripskit_estimated) <- c("lya", "uppskattat_antal_ripspillningshögar")
 
-ripa_estimated
-write_xlsx(ripa_estimated, path = "Rawdata/Uppskattat antal ripor vår distance_sampling.xlsx")
+ripskit_estimated
+write_xlsx(ripskit_estimated, path = "Data/Uppskattat antal ripspillningshögar Helags sommar 2018 distance_sampling.xlsx")

@@ -4,11 +4,11 @@ library("rgeos")
 library(dplyr)
 install.packages("xlsx")
 library(writexl)
-write
-lyor  <- readOGR(dsn = file.choose(), layer = "lyor", stringsAsFactors = FALSE)
 
-proj4string(lyor) <- CRS("+proj=utm +zone=33 +ellps=GRS80 +units=m +no_defs")
+lyor  <- readOGR(dsn = "./Lyor, kullar, gps-punkter, yta och avstånd/Lyor helags alla.shp", layer = "Lyor helags alla", stringsAsFactors = FALSE)
 summary(lyor) #den är projected redan!####
+
+
 plot(lyor, col ="red", pch = ".", cex = 3)
 
 
@@ -27,10 +27,10 @@ plot(lyor, col ="red", pch = ".", cex = 3)
 #skog <-gUnion(svensk_skog, norsk_skog)
 #summary(skog)
 
-skog <- readOGR(dsn = file.choose(), layer = "skog_sverigenorge", stringsAsFactors = FALSE)
+skog <- readOGR(dsn = "./Geodata/skog_sverigenorge/skog_sverigenorge.shp", layer = "skog_sverigenorge", stringsAsFactors = FALSE)
 summary(skog) #samma proj4strings som lyor. Den är projected####
 
-vatten <- readOGR(dsn = file.choose(), layer = "vatten_sverigenorge", stringsAsFactors = FALSE)
+vatten <- readOGR(dsn = "./Geodata/vatten/vatten_sverigenorge.shp", layer = "vatten_sverigenorge", stringsAsFactors = FALSE)
 summary(vatten) #samma proj4strings som lyor. Den är projected####
 
 
@@ -64,8 +64,13 @@ lyor_data<-lyor_data %>%
 
 lyor_data
 
+
+
+lyor_data<-lyor_data %>%
+  select(-coords.x1, -coords.x2)
+
 View(lyor_data)
 
-write_xlsx(lyor_data, path = "GIS-data/lyor_distans_vatten_skog.xlsx") #sparar den som excel-fil istället för csv så blir den enklare att manipulera i excel. Skrev ut den till GIS-data-mappen men flyttade den sen till lyor, gpspunkter och avstånd####
+write_xlsx(lyor_data, path = "Lyor, kullar, gps-punkter, yta och avstånd/lyor_distans_vatten_skog.xlsx") #sparar den som excel-fil istället för csv så blir den enklare att manipulera i excel.
 
 

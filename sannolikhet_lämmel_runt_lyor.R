@@ -18,7 +18,8 @@ lemmel_topp@crs #kollar koordinatsystem. Den är sweref
 lemmel_uppgång <- raster("Gnagardata/Lämmelprediktion uppgångsår.tif")
 lemmel_uppgång@crs #kollar koordinatsystem. Den är sweref
 
-summary(lyor) # är också sweref. Läste in den här dataramen i annat skript.
+lyor  <- readOGR(dsn = "./Lyor, kullar, gps-punkter, yta och avstånd/Lyor helags alla.shp", layer = "Lyor helags alla", stringsAsFactors = FALSE)
+summary(lyor) # är också sweref. 
   
 medelvärde_topp <- extract(lemmel_topp,             # raster layer
                       lyor,   # SPDF with centroids for buffer
@@ -78,27 +79,28 @@ max(lemmel_lista_uppgång$La.mmelprediktion_uppga.ngsa.r)
 class(lemmel_lista_uppgång) #blir en matrix av någon anledning
 lemmel_lista_uppgång <- as.data.frame(lemmel_lista_uppgång)
 class(lemmel_lista_uppgång$ID)
-
+length(unique(lemmel_lista_uppgång$ID))
 # tog svinlång tid att hitta en lösning på att lägga in rätt lynamn på alla rader. När lemmel_lista_uppgång
 # skapas så behålls inte lyornas namn. Det läggs in default-namn istället. Den kolumnen heter ID och är bara nummer
-# 1 till 78 (78 lyor). Eftersom det är svinmånga rader som ska ha samma lynamn funkar inte cbind. Man måste tala 
+# 1 till 80 (80 lyor). Eftersom det är svinmånga rader som ska ha samma lynamn funkar inte cbind. Man måste tala 
 # om för r vilka siffror som ska ha vilket namn. Det gör man genom att föklara att ID-numren är factor levels.
 # man behöver inte skriva ut alla (1:78 räcker). För att slippa skriva ut alla lynamn med citationstecken och komma
 # kan man använda paste så gör r det automatiskt. Det funkar inte att bara skriva lyor$Namn. Lynamnen blir faktorer.
 # Hoppas det inte blir problem.
-lemmel_lista_uppgång$Namn<-factor(lemmel_lista_uppgång$ID, levels = c(1:78),
+lemmel_lista_uppgång$Namn<-factor(lemmel_lista_uppgång$ID, levels = c(1:80),
        labels = c(paste(lyor$Namn)))
 
-lemmel_lista_uppgång
+head(lemmel_lista_uppgång)
 class(lemmel_lista_uppgång$Namn)
 
 names(lemmel_lista_uppgång) <- c("ID","lämmelprediktion_uppgångsår", "Namn")
 
 head(lemmel_lista_uppgång)
 
-lemmel_lista_uppgång %>% 
-  select(-ID) %>%
-  head()
+lemmel_lista_uppgång<-lemmel_lista_uppgång %>% 
+  dplyr::select(-ID)
+  
+
 
 #byter plats på kolumnerna
 lemmel_lista_uppgång <- lemmel_lista_uppgång[c("Namn","lämmelprediktion_uppgångsår")] 
@@ -108,7 +110,7 @@ head(lemmel_lista_uppgång)
 class(lemmel_lista_topp)
 lemmel_lista_topp<- as.data.frame(lemmel_lista_topp)
 
-lemmel_lista_topp$Namn<-factor(lemmel_lista_topp$ID, levels = c(1:78),
+lemmel_lista_topp$Namn<-factor(lemmel_lista_topp$ID, levels = c(1:80),
                                   labels = c(paste(lyor$Namn)))
 lemmel_lista_topp
 
@@ -116,9 +118,8 @@ names(lemmel_lista_topp) <- c("ID","lämmelprediktion_toppår", "Namn")
 
 head(lemmel_lista_topp)
 
-lemmel_lista_topp %>% 
-  select(-ID) %>%
-  head()
+lemmel_lista_topp<-lemmel_lista_topp %>% 
+  dplyr::select(-ID)
 
 #byter plats på kolumnerna
 lemmel_lista_topp <- lemmel_lista_topp[c("Namn","lämmelprediktion_toppår")] 
@@ -152,10 +153,12 @@ head(uppgång_bra)
 
 uppgång_medel <- lemmel_lista_uppgång %>%
   group_by(Namn) %>%
-  filter(lämmelprediktion_uppgångsår < ((max(lemmel$medelvärde_lämmelprediktion_uppgångsår, na.rm = TRUE))/2),
+  dplyr::filter(lämmelprediktion_uppgångsår < ((max(lemmel$medelvärde_lämmelprediktion_uppgångsår, na.rm = TRUE))/2),
          lämmelprediktion_uppgångsår > median(lemmel$medelvärde_lämmelprediktion_uppgångsår, na.rm = TRUE)) %>% 
   count(lämmelprediktion_uppgångsår) %>% 
   summarise(medelbra_lämmelhabitat = sum(n))
+
+
 
 head(uppgång_medel)
 
@@ -163,11 +166,12 @@ head(uppgång_medel)
 
 uppgång_dålig <- lemmel_lista_uppgång %>%
   group_by(Namn) %>%
-  filter(lämmelprediktion_uppgångsår < median(lemmel$medelvärde_lämmelprediktion_uppgångsår, na.rm = TRUE)) %>% 
+  dplyr::filter(lämmelprediktion_uppgångsår < median(lemmel$medelvärde_lämmelprediktion_uppgångsår, na.rm = TRUE)) %>% 
   count(lämmelprediktion_uppgångsår) %>% 
   summarise(dåliga_lämmelhabitat = sum(n))
 
 head(uppgång_dålig)
+
 
 alla_habitat <- lemmel_lista_uppgång %>%
   group_by(Namn) %>%
@@ -192,6 +196,7 @@ length(alla_habitat$Namn) #den innehåller fler lyor än uppgång_bra, uppgång_
 att_ta_bort<-alla_habitat[!alla_habitat$Namn %in% uppgång_bra$Namn, ] 
 
 att_ta_bort$Namn
+
 
 alla_habitat <- subset(alla_habitat, !Namn %in% c(paste(att_ta_bort$Namn))) #tar bort lyorna "FSZZ041", "FSZZ047", "FSZZ049", "FSZZ086", "FSZZ093".
 
@@ -223,9 +228,13 @@ stopifnot((proportioner$andel_bra_lämmelhabitat_uppgångsår +
              proportioner$andel_dåliga_lämmelhabitat_uppgångsår) == 1)
 
 
+View(proportioner)
+
+
+
 #' kommer säkert behöva skriva över filen eftersom gränsvärdena för bra, medelbra och dåligt lämmelhabitat inte
 #' är speciellt smart satta
-write_xlsx(proportioner, path = "Rawdata/andel_lämmelhabitattyper_per_lya.xlsx")
+write_xlsx(proportioner, path = "Den and territory selection/Rawdata/andel_lämmelhabitattyper_per_lya.xlsx")
 
 #' Jag gör en till uppdelning i tre, men den här gången
 #' tar jag bra lyor som den översta tredjedelen av alla sannolikheter. Medelbra som
@@ -255,37 +264,78 @@ length(sorterade_lämlar$lämmelprediktion_uppgångsår)
 #'den tar bara alla rader. Det gör ingenting för mig eftersom jag
 #'vill ha med båda kolumnerna
 round((length(sorterade_lämlar$lämmelprediktion_uppgångsår)/3))
-
+class(sorterade_lämlar$lämmelprediktion_uppgångsår)
 
 bra_lämmelhabitat_2<- sorterade_lämlar %>%
-  slice(1:round((length(sorterade_lämlar$lämmelprediktion_uppgångsår)/3) %>% 
-                  count(lämmelprediktion_uppgångsår) %>% 
-                  summarise(bra_lämmelhabitat = sum(n))
-                ))
+  slice(1:round((length(sorterade_lämlar$lämmelprediktion_uppgångsår)/3))) %>% 
+  group_by(Namn) %>% 
+  count(lämmelprediktion_uppgångsår) %>% 
+  summarise(bra_lämmelhabitat = sum(n))
 
-length(bra_lämmelhabitat_2$lämmelprediktion_uppgångsår) #längden stämmer
+round((length(sorterade_lämlar$lämmelprediktion_uppgångsår)/3))             
+1+(round((length(sorterade_lämlar$lämmelprediktion_uppgångsår)/3)))     
+
+head(bra_lämmelhabitat_2)
+length(bra_lämmelhabitat_2$bra_lämmelhabitat)
 
 medelbra_lämmelhabitat_2 <-sorterade_lämlar %>% 
-  slice(round((length(sorterade_lämlar$lämmelprediktion_uppgångsår)/3)):
-          (2*round((length(sorterade_lämlar$lämmelprediktion_uppgångsår)/3))))
+  slice(82821:
+          (2*round((length(sorterade_lämlar$lämmelprediktion_uppgångsår)/3)))) %>% 
+  group_by(Namn) %>% 
+  count(lämmelprediktion_uppgångsår) %>% 
+  summarise(medelbra_lämmelhabitat = sum(n))
 
-length(medelbra_lämmelhabitat_2$lämmelprediktion_uppgångsår) #längden stämmer
+head(medelbra_lämmelhabitat_2)
 
 dåliga_lämmelhabitat_2 <-sorterade_lämlar %>% 
-  slice((2*round((length(sorterade_lämlar$lämmelprediktion_uppgångsår)/3))):
-          max(length(sorterade_lämlar$lämmelprediktion_uppgångsår)))
+  slice(1+(2*round((length(sorterade_lämlar$lämmelprediktion_uppgångsår)/3))):
+          max(length(sorterade_lämlar$lämmelprediktion_uppgångsår))) %>% 
+  group_by(Namn) %>% 
+  count(lämmelprediktion_uppgångsår) %>% 
+  summarise(dåliga_lämmelhabitat = sum(n))
 
-length(dåliga_lämmelhabitat_2$lämmelprediktion_uppgångsår)
-          
-#stoppar in alla värden i vektorer och gör ny dataram
-bra_lämmelhabitat_2 <- bra_lämmelhabitat_2$lämmelprediktion_uppgångsår
-medelbra_lämmelhabitat_2 <- medelbra_lämmelhabitat_2$lämmelprediktion_uppgångsår
-dåliga_lämmelhabitat_2 <- dåliga_lämmelhabitat_2$lämmelprediktion_uppgångsår
+head(dåliga_lämmelhabitat_2)
+length(dåliga_lämmelhabitat_2$dåliga_lämmelhabitat)#innehåller NA-raderna
 
-kombinerad_2 <-data.frame(Namn, bra_lämmelhabitat_2,medelbra_lämmelhabitat_2, dåliga_lämmelhabitat_2, alla_lämmelhabitat)
+#tar bort NA raderna som inte täcks av rastern
+dåliga_lämmelhabitat_2 <- subset(dåliga_lämmelhabitat_2, !Namn %in% c(paste(att_ta_bort$Namn))) #återanvänder den här. Nu är NAs borta 
+
+#samma sak med alla_habitat
+att_ta_bort<-alla_habitat[!alla_habitat$Namn %in% uppgång_bra$Namn, ] 
+
+att_ta_bort$Namn
+
+alla_habitat <- subset(alla_habitat, !Namn %in% c(paste(att_ta_bort$Namn))) #tar bort lyorna "FSZZ041", "FSZZ047", "FSZZ049", "FSZZ086", "FSZZ093".
+
+kombinerad_2<- bra_lämmelhabitat_2 %>% 
+  left_join(medelbra_lämmelhabitat_2, by = "Namn" ) %>% 
+  left_join(dåliga_lämmelhabitat_2, by = "Namn") %>% 
+  left_join(alla_habitat, by = "Namn")
+
+
+
+View(kombinerad_2)
+
 
 proportioner_2 <- kombinerad_2 %>% 
   group_by(Namn) %>% 
-  mutate(andel_bra_lämmelhabitat_uppgångsår = bra_lämmelhabitat_2/alla_lämmelhabitat) %>% 
-  mutate(andel_medelbra_lämmelhabitat_uppgångsår = medelbra_lämmelhabitat_2/alla_lämmelhabitat) %>% 
-  mutate(andel_dåliga_lämmelhabitat_uppgångsår = dåliga_lämmelhabitat_2/alla_lämmelhabitat)
+  mutate(andel_bra_lämmelhabitat_uppgångsår = bra_lämmelhabitat/alla_lämmelhabitat) %>% 
+  mutate(andel_medelbra_lämmelhabitat_uppgångsår = medelbra_lämmelhabitat/alla_lämmelhabitat) %>% 
+  mutate(andel_dåliga_lämmelhabitat_uppgångsår = dåliga_lämmelhabitat/alla_lämmelhabitat)
+
+View(proportioner_2)
+
+#kollar så att andelarna summerar till 1. Det gör de
+stopifnot((proportioner_2$andel_bra_lämmelhabitat_uppgångsår + 
+             proportioner_2$andel_medelbra_lämmelhabitat_uppgångsår + 
+             proportioner_2$andel_dåliga_lämmelhabitat_uppgångsår) == 1)
+
+#vet inte varför stopifnot inte fungerar. Alla blir ju 1:
+
+proportioner_2$andel_bra_lämmelhabitat_uppgångsår + 
+  proportioner_2$andel_medelbra_lämmelhabitat_uppgångsår + 
+  proportioner_2$andel_dåliga_lämmelhabitat_uppgångsår
+
+write_xlsx(proportioner_2, path = "Den and territory selection/Rawdata/andel_lämmelhabitattyper_per_lya_tredjedelsuppdelning.xlsx")
+
+

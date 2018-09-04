@@ -52,6 +52,9 @@ nrow(alla_lyor) #här är alla lyor. 80 stycken
 
 alla_lyor <- as.data.frame(alla_lyor)
 
+#printar ut en excelfil så att jag har alla Helagslyor separat. Har bara Jämtlandslyorna i en fil annars.
+write_xlsx(alla_lyor, path ="./Lyor, kullar, gps-punkter, yta och avstånd/Lyor helags alla.xlsx")
+
 head(alla_lyor)
 
 alla_lyor<-alla_lyor %>% 
@@ -74,7 +77,7 @@ write_xlsx(alla_myrlyor, path = "Lyor, kullar, gps-punkter, yta och avstånd/Are
 
 ###### Samma sak fast med vatten######
 
-vatten <- readOGR(dsn = file.choose(), layer = "vatten_runt_lyor", stringsAsFactors = FALSE) #viktigt med stringsAsFactors = FALSE. Annars blir det fel när man ändrar siffror till numeric.
+vatten <- readOGR(dsn = "./Geodata/vatten/vatten_runt_lyor.shp", layer = "vatten_runt_lyor", stringsAsFactors = FALSE) #viktigt med stringsAsFactors = FALSE. Annars blir det fel när man ändrar siffror till numeric.
 summary(vatten)
 vatten <- as.data.frame(vatten) #gör om från spatial till data frame
 

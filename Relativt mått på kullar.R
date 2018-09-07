@@ -6,7 +6,7 @@ library(readxl)
 library(writexl)
 library(lubridate)
 
-kullar <- read_xlsx(path = "Lyor, kullar, gps-punkter, yta och avstånd/kanske alla valplyor 2000-2018.xlsx")
+kullar <- read_xlsx(path = "Lyor, kullar, gps-punkter, yta och avstånd/ALLA VALPLYOR HELAGS  KORREKT 2000-2018.xlsx")
 kullar<- as.data.frame(kullar)
 head(kullar)
 

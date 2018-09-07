@@ -23,42 +23,67 @@ library(writexl)
 # gör en shapefil av Rasmus kulldata men först måste gps-positioner läggas in för varje kull.
 # Filen "Lypositioner kullar 2000-2017 SWEREF99 per kull.csv" innehåller inte omatade lyor så 
 # jag måste göra en fil som innehåller alla kullar
-rasmuskulldata <- read_xlsx(file.choose()) #den inlästa filen är "min sammanställning plus BEBODDA_LYOR_HEF 00_10.xlsx". dataramen får fortsätta heta rasmuskulldata
-rasmuskulldata
+rasmuskulldata <- read_xlsx(path ="Lyor, kullar, gps-punkter, yta och avstånd/ALLA VALPLYOR HELAGS  KORREKT 2000-2018.xlsx") # dataramen får fortsätta heta rasmuskulldata
+class(rasmuskulldata)
+rasmuskulldata <- as.data.frame(rasmuskulldata)
 View(rasmuskulldata)
+colnames(rasmuskulldata) <- c("denNr", "Kommentar", "year", "fas")
 unique(rasmuskulldata$year)
 
 
-lypositionerfull <- read.csv(file.choose(), header = TRUE, sep = ";", stringsAsFactors = FALSE) #den inlästa filen är Lypositioner Rovbasen Helags SWEREF99.csv 
+lypositionerfull <- readOGR(dsn = "Lyor, kullar, gps-punkter, yta och avstånd/Lyor helags alla.shp", stringsAsFactors = FALSE) #den inlästa filen är Lypositioner Rovbasen Helags SWEREF99.csv 
+lypositionerfull<- as.data.frame(lypositionerfull)
 View(lypositionerfull)
-lypositioner<- subset(lypositionerfull, select = c(denNr, north, east)) #tar ut de kolumner jag behöver
+
+#readOGR lägger till två extra koordinatkullar. Tar bort dem
+lypositionerfull<-lypositionerfull %>% 
+  select(-c(coords.x1, coords.x2))
+#har ingen excel-fil på det så skriver ut en och sparar
+
+write_xlsx(lypositionerfull, path =  "Lyor, kullar, gps-punkter, yta och avstånd/Lyor helags alla.xlsx")
+
+
+
+lypositioner<- subset(lypositionerfull, select = c(Namn, N, E)) #tar ut de kolumner jag behöver
 View(lypositioner)
-lypositionerKull<- merge(lypositioner, rasmuskulldata, by="denNr") #funkade bra! Trots att "lypositioner" bara har en rad per år parar merge ihop alla kullar med rätt north och east.####
+lypositionerKull<- merge(lypositioner, rasmuskulldata, by="Namn") #funkade bra! Trots att "lypositioner" bara har en rad per år parar merge ihop alla kullar med rätt north och east.####
 View(lypositionerKull)
 
+#' skapar en ny kolumn som heter litterID och byter namn på kolumnerna så att de
+#' är samma som i Rasmus skript
+
+lypositionerKull <-lypositionerKull %>% 
+  unite(litterID, År, Namn, sep="-", remove = FALSE )
+colnames(lypositionerKull)
+colnames(lypositionerKull) <- c("litterID", "denNr", "north", "east", "kommentar", "year", "fas")
 
 lypositionerKull<-subset(lypositionerKull, select = c("denNr","north","east","year","litterID")) #plockar ut de kolumner jag behöver
 View(lypositionerKull)
+class(lypositionerKull$east)
+class(lypositionerKull$north)
+class(lypositionerKull$year)
 
+lypositionerKull$east<- as.numeric(lypositionerKull$east)
+lypositionerKull$north<-as.numeric(lypositionerKull$north)
 
 coordinates(lypositionerKull) <- c("east", "north") #öst är alltid före norr i sp-klasser. Funktionen coordinates talar om för R i vilka kolumner koordinaterna finns####
 summary(lypositionerKull) # dataramen är inte projected (inte i meter), och har inget koordinatsystem.
 
 # lägger in SWEREF 99 som koordinatsystem
-proj4string(lypositionerKull) <- CRS("+proj=utm +zone=33 +ellps=GRS80 +units=m +no_defs")
+proj4string(lypositionerKull) <- CRS("+init=EPSG:3006")
 summary(lypositionerKull) # nu är den projected (i meter) och har koordinatsystem (SWEREF 99). Då 
 # går det att mäta avstånd
-
+plot(lypositionerKull)
 # ändrade om working directory till mappen "Masterarbete" så att 
 # jag inte sparar gps-punkterna i mappen som ska upp på github
 
 # nu när jag har talat om för R vilka kolumner som innehåller koordinater och vilket
 # koordinatsystem som gäller kan jag printa ut en shapefil.
-writeOGR(lypositionerKull, dsn ="./Lyor, kullar, gps-punkter och avstånd/lypositionerKullTor.shp", layer = "lypositionerKull", driver = "ESRI Shapefile")
+writeOGR(lypositionerKull, dsn ="./Lyor, kullar, gps-punkter, yta och avstånd/lypositionerKullTor.shp", layer = "lypositionerKull", driver = "ESRI Shapefile")
 
 #nu kan jag läsa in shapefilen igen så att jag kan mäta####
 
-lypositionerSHP<-readOGR(file.choose()) # läser alltså in lypositionerKullTor.shp. Märk att R sparar om east som coords.x1 och north som coords.x2
+lypositionerSHP<-readOGR(dsn ="./Lyor, kullar, gps-punkter, yta och avstånd/lypositionerKullTor.shp") # läser alltså in lypositionerKullTor.shp. Märk att R sparar om east som coords.x1 och north som coords.x2
 summary(lypositionerSHP)
 
 
@@ -81,17 +106,21 @@ for(i in 1:length(yearFrame$yearlist)) {
          as.data.frame(gDistance(lypositionerSHP[lypositionerSHP$year==yearFrame$yearlist[i],], byid=T)))
 }
 
-# Utifrån dessa dejtafrejmar (separerade per år) vill vi nu läsa ut det näst längsta avstånet (eftersom det första avståndet är
-#  till punkten själv, och det är naturligtvis noll.) Rasmus försökte automatisera, men det var som förgjort.
-# Här lånar jag Rasmus skript rakt av. Antar att [2] anger andra värdet. Att decreasing är 
-# satt till FALSE antar jag betyder att andra värdet i stigande led väljs. I filen Rasmus.kulldata till Tor
-# saknas år 2000, därför fungerar inte första raden. Det saknas även ett par andra år. I filen "min sammanställning plus BEBODDA_LYOR_HEF 00_10.xlsx" finns
-# finns alla år förutom 2012, eftersom det inte var någon kull då. År 2003 och 2006 var det bara en kull så därför finns inget avstånd till någon annan kull
-# Jag kan även lägga till 2018 när sommarens inventering är klar om det hinns med.
+#' Utifrån dessa dejtafrejmar (separerade per år) vill vi nu läsa ut det näst längsta 
+#' avstånet (eftersom det första avståndet är
+#'  till punkten själv, och det är naturligtvis noll.) Rasmus försökte automatisera, 
+#'  men det var som förgjort.
+#' Här lånar jag Rasmus skript rakt av. Antar att [2] anger andra värdet. Att decreasing är 
+#' satt till FALSE antar jag betyder att andra värdet i stigande led väljs. I filen 
+#' "ALLA VALPLYOR HELAGS  KORREKT 2000-2018.xlsx" finns
+#' alla år förutom 2012, eftersom det inte var någon kull då. 
+#' År 2000, 2003 och 2006 var det bara en kull så därför finns inget avstånd till någon 
+#' annan kull
 
 
 
-minimumdenDistance2000 <- apply(denDistance2000, 1, function(x) order(x, decreasing=F)[2])
+
+
 minimumdenDistance2001 <- apply(denDistance2001, 1, function(x) order(x, decreasing=F)[2])
 minimumdenDistance2002 <- apply(denDistance2002, 1, function(x) order(x, decreasing=F)[2])
 minimumdenDistance2004 <- apply(denDistance2004, 1, function(x) order(x, decreasing=F)[2])
@@ -106,7 +135,7 @@ minimumdenDistance2014 <- apply(denDistance2014, 1, function(x) order(x, decreas
 minimumdenDistance2015 <- apply(denDistance2015, 1, function(x) order(x, decreasing=F)[2])
 minimumdenDistance2016 <- apply(denDistance2016, 1, function(x) order(x, decreasing=F)[2])
 minimumdenDistance2017 <- apply(denDistance2017, 1, function(x) order(x, decreasing=F)[2])
-
+minimumdenDistance2018 <- apply(denDistance2018, 1, function(x) order(x, decreasing=F)[2])
 
 
 # Härifrån stjäl jag Rasmus skript rakt av.
@@ -120,19 +149,8 @@ minimumdenDistance2017 <- apply(denDistance2017, 1, function(x) order(x, decreas
 litterDistance <- data.frame(matrix(ncol = 3, nrow = 0))
 colnames(litterDistance) <- c("litterID", "distance", "year")
 
-#År 2000
-SminimumdenDistance2000 <- cbind(lypositionerSHP[lypositionerSHP$year==2000,],
-                                 lypositionerSHP[lypositionerSHP$year==2000,][minimumdenDistance2000,],
-                                 apply(denDistance2000, 1, function(x) sort(x, decreasing=F)[2]))
-
-
-
-# Stoppa in i dataram för 2000
-litterDistance2000 <- as.data.frame(SminimumdenDistance2000@data$litterID)
-colnames(litterDistance2000) <- "litterID"
-litterDistance2000$distance <-  as.vector(SminimumdenDistance2000@data$structure.c.24386.5938581016..24386.5938581016....Names...c..41...)
-litterDistance2000$year <-  SminimumdenDistance2000@data$year
-
+# År 2000
+# bara en kull detta år, därför blir det inte något avstånd till någon annan kull
 
 #År 2001
 SminimumdenDistance2001 <- cbind(lypositionerSHP[lypositionerSHP$year==2001,],
@@ -143,7 +161,7 @@ SminimumdenDistance2001 <- cbind(lypositionerSHP[lypositionerSHP$year==2001,],
 # Stoppa in i dataram för 2001
 litterDistance2001 <- as.data.frame(SminimumdenDistance2001@data$litterID)
 colnames(litterDistance2001) <- "litterID"
-litterDistance2001$distance <-  as.vector(SminimumdenDistance2001@data$structure.c.8667.09714956513..4295.23573276252..4295.23573276252)
+litterDistance2001$distance <-  as.vector(SminimumdenDistance2001@data$structure.c.8667.09714956513..8667.09714956513....Names...c..55... )
 litterDistance2001$year <-  SminimumdenDistance2001@data$year
 
 #År 2002
@@ -154,7 +172,7 @@ SminimumdenDistance2002 <- cbind(lypositionerSHP[lypositionerSHP$year==2002,],
 # Stoppa in i dataram för 2002
 litterDistance2002 <- as.data.frame(SminimumdenDistance2002@data$litterID)
 colnames(litterDistance2002) <- "litterID"
-litterDistance2002$distance <-  as.vector(SminimumdenDistance2002@data$structure.c.4974.73798304996..4295.23573276252..4974.73798304996..)
+litterDistance2002$distance <-  as.vector(SminimumdenDistance2002@data$structure.c.4974.73798304996..4295.23573276252..4974.73798304996.. )
 litterDistance2002$year <-  SminimumdenDistance2002@data$year
 
 #År 2003
@@ -183,7 +201,7 @@ SminimumdenDistance2005 <- cbind(lypositionerSHP[lypositionerSHP$year==2005,],
 # Stoppa in i dataram för 2005
 litterDistance2005 <- as.data.frame(SminimumdenDistance2005@data$litterID)
 colnames(litterDistance2005) <- "litterID"
-litterDistance2005$distance <-  as.vector(SminimumdenDistance2005@data$structure.c.13687.6198442242..6221.654120891..8152.76425514684..)
+litterDistance2005$distance <-  as.vector(SminimumdenDistance2005@data$structure.c.6221.83067914902..8152.76425514684..4997.35780187891..)
 litterDistance2005$year <-  SminimumdenDistance2005@data$year
 
 #År 2006
@@ -199,7 +217,7 @@ SminimumdenDistance2007 <- cbind(lypositionerSHP[lypositionerSHP$year==2007,],
 # Stoppa in i dataram för 2007
 litterDistance2007 <- as.data.frame(SminimumdenDistance2007@data$litterID)
 colnames(litterDistance2007) <- "litterID"
-litterDistance2007$distance <-  as.vector(SminimumdenDistance2007@data$structure.c.17742.8858982974..13503.1344879624..3752.44360384004..)
+litterDistance2007$distance <-  as.vector(SminimumdenDistance2007@data$structure.c.17742.8858982974..13502.2961010341..8043.57066233647..)
 litterDistance2007$year <-  SminimumdenDistance2007@data$year
 
 
@@ -223,7 +241,7 @@ SminimumdenDistance2009 <- cbind(lypositionerSHP[lypositionerSHP$year==2009,],
 # Stoppa in i dataram för 2009
 litterDistance2009 <- as.data.frame(SminimumdenDistance2009@data$litterID)
 colnames(litterDistance2009) <- "litterID"
-litterDistance2009$distance <-  as.vector(SminimumdenDistance2009@data$structure.c.11608.0242935652..11608.0242935652....Names...c..36... )
+litterDistance2009$distance <-  as.vector(SminimumdenDistance2009@data$structure.c.11608.0242935652..11608.0242935652....Names...c..43... )
 litterDistance2009$year <-  SminimumdenDistance2009@data$year
 
 
@@ -235,7 +253,7 @@ SminimumdenDistance2010 <- cbind(lypositionerSHP[lypositionerSHP$year==2010,],
 # Stoppa in i dataram för 2010
 litterDistance2010 <- as.data.frame(SminimumdenDistance2010@data$litterID)
 colnames(litterDistance2010) <- "litterID"
-litterDistance2010$distance <-  as.vector(SminimumdenDistance2010@data$structure.c.15291.6309790683..5167.09299316356..7564.95128867331.. )
+litterDistance2010$distance <-  as.vector(SminimumdenDistance2010@data$structure.c.15291.6309790683..6788.74399281634..7564.3324226266.. )
 litterDistance2010$year <-  SminimumdenDistance2010@data$year
 
 # År 2011
@@ -246,7 +264,7 @@ SminimumdenDistance2011 <- cbind(lypositionerSHP[lypositionerSHP$year==2011,],
 # Stoppa in i dataram för 2011
 litterDistance2011 <- as.data.frame(SminimumdenDistance2011@data$litterID)
 colnames(litterDistance2011) <- "litterID"
-litterDistance2011$distance <-  as.vector(SminimumdenDistance2011@data$structure.c.3876.4808783225..16446.3916103199..3443.10673665514.. )
+litterDistance2011$distance <-  as.vector(SminimumdenDistance2011@data$structure.c.3876.4808783225..15291.6309790683..3443.10673665514.. )
 litterDistance2011$year <-  SminimumdenDistance2011@data$year
 
 # År 2012
@@ -285,7 +303,7 @@ SminimumdenDistance2015 <- cbind(lypositionerSHP[lypositionerSHP$year==2015,],
 # Stoppa in i dataram för 2015
 litterDistance2015 <- as.data.frame(SminimumdenDistance2015@data$litterID)
 colnames(litterDistance2015) <- "litterID"
-litterDistance2015$distance <-  as.vector(SminimumdenDistance2015@data$structure.c.5601.3849180359..2021.19222242715..5838.99186503972.. )
+litterDistance2015$distance <-  as.vector(SminimumdenDistance2015@data$structure.c.5601.3849180359..2021.19222242715..5838.50468870241.. )
 litterDistance2015$year <-  SminimumdenDistance2015@data$year
 
 # År 2016
@@ -298,7 +316,7 @@ SminimumdenDistance2016 <- cbind(lypositionerSHP[lypositionerSHP$year==2016,],
 # Stoppa in i dataram för 2016
 litterDistance2016 <- as.data.frame(SminimumdenDistance2016@data$litterID)
 colnames(litterDistance2016) <- "litterID"
-litterDistance2016$distance <-  as.vector(SminimumdenDistance2016@data$structure.c.8667.09714956513..8667.09714956513....Names...c..57...)
+litterDistance2016$distance <-  as.vector(SminimumdenDistance2016@data$structure.c.8667.09714956513..8667.09714956513....Names...c..57... )
 litterDistance2016$year <-  SminimumdenDistance2016@data$year
 
 # År 2017
@@ -310,14 +328,29 @@ SminimumdenDistance2017 <- cbind(lypositionerSHP[lypositionerSHP$year==2017,],
 # Stoppa in i dataram för 2017
 litterDistance2017 <- as.data.frame(SminimumdenDistance2017@data$litterID)
 colnames(litterDistance2017) <- "litterID"
-litterDistance2017$distance <-  as.vector(SminimumdenDistance2017@data$structure.c.3326.4865849722..12687.656521202..8826.57011528261.. )
+litterDistance2017$distance <-  as.vector(SminimumdenDistance2017@data$structure.c.3335.99835131854..12687.656521202..8826.28421250981.. )
 litterDistance2017$year <-  SminimumdenDistance2017@data$year
+
+# År 2018
+SminimumdenDistance2018 <- cbind(lypositionerSHP[lypositionerSHP$year==2018,],
+                                 lypositionerSHP[lypositionerSHP$year==2018,][minimumdenDistance2018,],
+                                 apply(denDistance2018, 1, function(x) sort(x, decreasing=F)[2]))
+
+
+# Stoppa in i dataram för 2017
+litterDistance2018 <- as.data.frame(SminimumdenDistance2018@data$litterID)
+colnames(litterDistance2018) <- "litterID"
+litterDistance2018$distance <-  as.vector(SminimumdenDistance2018@data$structure.c.2879.34523807063..12687.656521202..2790.89412196163.. )
+litterDistance2018$year <-  SminimumdenDistance2018@data$year
+
+
+
 
 yearFrame$litterdistance <- paste("litterDistance", yearFrame$yearlist, sep="")
 
-litterDistanceTotal <- rbind(litterDistance2000,litterDistance2001, litterDistance2002, litterDistance2004, litterDistance2005, litterDistance2007,
+litterDistanceTotal <- rbind(litterDistance2001, litterDistance2002, litterDistance2004, litterDistance2005, litterDistance2007,
                              litterDistance2008, litterDistance2009, litterDistance2010, litterDistance2011, litterDistance2013, litterDistance2014, litterDistance2015, 
-                             litterDistance2016, litterDistance2017)
+                             litterDistance2016, litterDistance2017, litterDistance2018)
 
 
 litterDistanceTotal

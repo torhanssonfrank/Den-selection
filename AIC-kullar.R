@@ -105,17 +105,55 @@ kullar_sub <- kullar_var[complete.cases(kullar_var), ]
 
 View(kullar_sub)
 
+#' Ska det vara fixed effects(lm) eller random effects?.
+#' Avstånd till fasta punkter, andel myrar osv borde ju vara fixed effects.
+#' Däremot borde rödrävar kunna vara en random effect. I en fixed 
+#' effect får man varians av treatment och sampling error, alltså är det
+#' bara sampling error som står för slumpmässighet i designen. I en random effect får man
+#' varians på treatment, interaktion och sampling error. Det är alltså mer slumpmässighet
+#' i variabeln. Rödrävar borde alltså vara en random effekt eftersom det är slumpmässigt
+#' var de råkade befinna sig när de blev skjutna. Sampling error i det fallet skulle vara
+#' att man tog gps-positionen fel. Det finns inget slumpmässigt med avstånd till trädgränsen,
+#' bara sampling error, tex att trädgränsen ligger fel i GIS-programmet.
+#' Schluter:
+#' In R, lm assumes that all effects are fixed. Do not use if you have random effects.
+#' Use lme (in the nlme package) or lmer (in the lme4 package) to analyze models
+#' containing random effects. They model the variance structure explicitly, and use
+#' restricted maximum likelihood (REML) to obtain unbiased estimates of effects and
+#' test hypotheses.
+#' • families made up of siblings
+#' • subjects measured repeatedly (“repeated measures”)
+#' • transects of quadrats in a sampling survey
+#' • field plots of plants
+#' • environment chambers containing aquaria
+
 fm1 <- lm(kull ~ lemM + lemA + hojd + vattD + skogD + vattA + myrA, data = kullar_sub, na.action = "na.fail" )
 
 
 ms1 <- dredge(fm1) #för att den här ska funka får man inte ha NA på någon rad. Då kommer den passa ihop massa subsets av datat med andra subsets och då blir det kaos.
+
 summary(ms1)
+summary(model.avg(ms1, subset = delta < 4)) # skillnaden mellan modellen med lägst AIC och den modellen med högst AIC som väljs
+Weights(ms1)
+
+
 
 par(mar = c(3,5,6,4))
 plot(ms1, labAsExpr = TRUE)
-model.avg(ms1, subset = delta < 4)
+model.avg(ms1, subset = delta < 4) 
 confset.95p <- get.models(ms1, cumsum(weight) <= .95)
+
+?model.avg
+?get.models
+?cums
+
 avgmod.95p <- model.avg(confset.95p)
 summary(avgmod.95p)
 confint(avgmod.95p)
 
+
+#Vet inte riktigt vad outputen nedan betyder
+# Force re-fitting the component models
+model.avg(ms1, cumsum(weight) <= .95, fit = TRUE)
+# Models are also fitted if additional arguments are given
+model.avg(ms1, cumsum(weight) <= .95, rank = "AIC")

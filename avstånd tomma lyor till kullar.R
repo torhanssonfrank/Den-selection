@@ -256,5 +256,17 @@ avs_tom_till_kull <-rbind(år2000, år2001, år2002, år2003,
 
 
 View(avs_tom_till_kull)
+# tar bort koordinaterna så kan jag spara på github
+
+avs_tom_till_kull <- avs_tom_till_kull %>% 
+  select(-c(E, N))
+length(avs_tom_till_kull$År)
+# Printar filen. OBS! OSÄKER PÅ OM FASERNA ÄR RÄTT!!!!
+
+write_xlsx(avs_tom_till_kull, path = "Den and territory selection/Data/avstånd tomma lyor till kull.xlsx")
+
+
+
+
 
 år2001$avs_kull <- apply(gDistance(k2000, t2000, byid=TRUE), 1, min)

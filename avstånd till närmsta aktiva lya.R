@@ -31,7 +31,7 @@ colnames(rasmuskulldata) <- c("denNr", "Kommentar", "year", "fas")
 unique(rasmuskulldata$year)
 
 
-lypositionerfull <- readOGR(dsn = "Lyor, kullar, gps-punkter, yta och avstånd/Lyor helags alla.shp", stringsAsFactors = FALSE) #den inlästa filen är Lypositioner Rovbasen Helags SWEREF99.csv 
+lypositionerfull <- readOGR(dsn = "Lyor, kullar, gps-punkter, yta och avstånd/Lyor helags alla.shp", stringsAsFactors = FALSE) #den inlästa filen är lyor helags alla. shp
 lypositionerfull<- as.data.frame(lypositionerfull)
 View(lypositionerfull)
 

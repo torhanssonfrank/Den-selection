@@ -1,6 +1,6 @@
 # avstånd till närmsta rödräv
 
-library(SearchTrees)
+library(SearchTrees) #använde aldrig det här paketet. Kan användas för att beräkna minsta avstånd.
 library(maptools)
 library(sp)
 library(rgeos)
@@ -202,18 +202,21 @@ writeOGR(x2016, dsn = "Skript och rödrävsdata från Rasmus/2001, 2005 och 2008
 #' rödrävarna är skjutna överallt. Inget mönster i datat.
 #' Istället för att välja avstånd till ett rödrävsområde gör
 #' jag ett antagande att rödräven befann sig på samma område sommaren innan
-#' vintern den blev skjuten. Därefter lägger jag på en buffer runt punkten där
-#' räven blev skjuten som motsvarar rödrävens revirstorlek (som jag hittar i litteraturen)
+#' vintern den blev skjuten. Alternativ: lägga på en buffer runt punkten där
+#' räven blev skjuten som motsvarar rödrävens revirstorlek (vilket är 19.5 km^2 enligt 
+#' Walton så det blir nog ett för stort område, dvs cirkel med 2.5 km radie vilket
+#' också blir ett antagande eftersom räven måste ha befunnit sig i mitten av sitt revir
+#' när den blev skjuten för att det ska bli ett vettigt antagande.)
 
 # börjar med att spara om alla lyor som spatial
+#Gör en kopia av lyor att göra om till spatial
 lyor$N <- as.numeric(lyor$N)
 lyor$E <- as.numeric(lyor$E)
-#Gör en kopia av lyor att göra om till spatial
 
 lyorSP <- cbind(lyor)
 
 coordinates(lyorSP) <- c("E", "N")
-lyorSP<- SpatialPoints(lyorSP)
+lyorSP<- SpatialPoints(lyorSP) #funkar med SpatialPointsDataFrame också så den här raden behövs egentligen inte.
 proj4string(lyorSP) <- CRS("+init=EPSG:3006")
 summary(lyorSP) #sweref och projected
 plot(lyorSP)
@@ -240,7 +243,7 @@ plot(lyorSP)
 år2015 <- data.frame(Namn = lyor$Namn, År = (rep(2015,length(lyor$Namn))), närmaste_rödräv = numeric(80))
 
 
-#Räknar ut avstånd till närmsta rödräv från varje lya. Min ger kortaste avståndet
+#Räknar ut avstånd till närmsta rödräv från varje lya. "min" ger kortaste avståndet
 år2001$närmaste_rödräv <- apply(gDistance(x2002, lyorSP, byid=TRUE), 1, min)
 år2002$närmaste_rödräv <- apply(gDistance(x2003, lyorSP, byid=TRUE), 1, min)
 år2003$närmaste_rödräv <- apply(gDistance(x2004, lyorSP, byid=TRUE), 1, min)

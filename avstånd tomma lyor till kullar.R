@@ -51,7 +51,7 @@ colnames(År_multi) <- c("År", "Fas")
 View(År_multi)
 
   
-År_fas_ram #tror inte att de här faserna stämmer. 2011 står som 3. Borde vara 4. 4 på 2002, 2005 och 2008
+År_fas_ram # fas 4 betyder krasch. 3 är topp
 
 #' lägger ihop lyorna med år och fas. bind_cols går på position så viktigt att
 #' båda dataramarna har rätt längd
@@ -73,10 +73,10 @@ kullar <- kullar %>%
 
 # lägger till kolumnen kull med 1 för kull och 0 för ingen kull
 head(kullar)
-lyor_long$kull <- as.numeric(lyor_long$obsID %in% kullar$obsID)
+lyor_long$kull <- as.numeric(lyor_long$obsID %in% kullar$obsID) #där det finns en match mellan lyor long och kullar på obsID blir det 1. Ingen match ger 0.
 View(lyor_long)
 #' kommer kunna använda dataramen lyor_long senare när jag gör AIC, så printar den nu.
-#' Om faserna är fel kommer jag behöva göra om den biten och printa igen.
+#' Faserna stämmer.
 
 write_xlsx(lyor_long, path = "Lyor, kullar, gps-punkter, yta och avstånd/lyor helags med fas och kull lång.xlsx")
 
@@ -261,7 +261,7 @@ View(avs_tom_till_kull)
 avs_tom_till_kull <- avs_tom_till_kull %>% 
   select(-c(E, N))
 length(avs_tom_till_kull$År)
-# Printar filen. OBS! OSÄKER PÅ OM FASERNA ÄR RÄTT!!!!
+# Printar filen. Faserna är rätt
 
 write_xlsx(avs_tom_till_kull, path = "Den and territory selection/Data/avstånd tomma lyor till kull.xlsx")
 

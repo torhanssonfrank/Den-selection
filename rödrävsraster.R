@@ -17,6 +17,24 @@ red_fox <- readOGR(dsn = "Lyor, kullar, gps-punkter, yta och avstånd/red_fox_20
 helagsRaster <- raster("Gnagardata/Lämmelprediktion uppgångsår.tif")
 helagsRaster[!is.na(helagsRaster)] <- 0 # nu har jag ett tomt bakgrundsraster. Pixlarna kanske är för små men kan iofs ta ett medelvärde.
 helagsRaster@crs # sweref
+
+
+#' I SLUTÄNDAN GJORDE JAG RASTERN I QGIS GENOM ATT SKAPA EN HEATMAP
+#'  (DEFAULT-FUNKTIONEN HEATMAP). JAG FICK DOCK INTE TILL ATT ÄNDRA NODATA-OMRÅDEN
+#'  TILL 0 ISTÄLLET FÖR NA I QGIS SÅ JAG GÖR DET HÄR. KODEN UNDER DESSA FYRA RADER ÄR DELS
+#'  FÖRSÖK TILL ATT GÖRA EN RASTER, DELS ÄR DET EN UTRÄKNING AV AVSTÅND TILL NÄRMSTA LYA
+
+heatmap <- raster("Geodata/Rödrävsraster/rödrävheatmap.tif")
+heatmap[is.na(heatmap)] <- 0
+plot(heatmap)
+RST<-writeRaster(heatmap, filename = "rödrävheatmap", format = "GTiff")
+
+
+
+
+
+
+
 foxBuffer <- gBuffer(red_fox, byid=TRUE, width=1500)
 foxBuffer$fox_ID <- as.character(1:length(foxBuffer$Year))
 foxBuffer$fox_ID
@@ -24,6 +42,8 @@ summary(foxBuffer)
 #' Skriver ut filen igen så att jag har ID för varje obs. Blir kanske enklare att 
 #' hantera den i qgis
 writeOGR(foxBuffer, dsn = "Geodata/buffer runt lyor/rödrävsbuffer2000_2016.shp", layer = "foxBuffer", driver = "ESRI Shapefile")
+
+
 
 #' Gör en enkel uträkning på hur många skjutna rödrävar mellan 2000-2016
 #'  som hamnar inom varje lybuffer. Sedan mäter jag avstånd till alla rödrävar

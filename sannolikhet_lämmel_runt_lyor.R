@@ -84,9 +84,9 @@ length(unique(lemmel_lista_uppgång$ID))
 # skapas så behålls inte lyornas namn. Det läggs in default-namn istället. Den kolumnen heter ID och är bara nummer
 # 1 till 80 (80 lyor). Eftersom det är svinmånga rader som ska ha samma lynamn funkar inte cbind. Man måste tala 
 # om för r vilka siffror som ska ha vilket namn. Det gör man genom att föklara att ID-numren är factor levels.
-# man behöver inte skriva ut alla (1:78 räcker). För att slippa skriva ut alla lynamn med citationstecken och komma
+# man behöver inte skriva ut alla (1:80 räcker). För att slippa skriva ut alla lynamn med citationstecken och komma
 # kan man använda paste så gör r det automatiskt. Det funkar inte att bara skriva lyor$Namn. Lynamnen blir faktorer.
-# Hoppas det inte blir problem.
+# Hoppas det inte blir problem. 
 lemmel_lista_uppgång$Namn<-factor(lemmel_lista_uppgång$ID, levels = c(1:80),
        labels = c(paste(lyor$Namn)))
 
@@ -105,6 +105,18 @@ lemmel_lista_uppgång<-lemmel_lista_uppgång %>%
 #byter plats på kolumnerna
 lemmel_lista_uppgång <- lemmel_lista_uppgång[c("Namn","lämmelprediktion_uppgångsår")] 
 head(lemmel_lista_uppgång)
+
+#' Karin tyckte att jag skulle ta variansen som ett mått istället för andel bra lämmelhabitat för
+#' uppgångsår.
+#' Jag behåller dock koden för andel bra habitat ifall den behövs.
+
+t <- lemmel_lista_uppgång %>% 
+  group_by(Namn) %>% 
+  summarise(lemmel_var = var(lämmelprediktion_uppgångsår))
+max(t$lemmel_var, na.rm = TRUE)
+min(t$lemmel_var, na.rm = TRUE)
+
+write_xlsx(t, path = "Den and territory selection/Data/lämmelvarians per lya.xlsx")
 
 #Gör samma sak för toppår
 class(lemmel_lista_topp)

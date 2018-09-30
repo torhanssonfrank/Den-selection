@@ -1,9 +1,13 @@
+
+
 library(MuMIn)
 library(writexl)
 library(readxl)
 library(dplyr)
 library(tidyr)
-
+library(sp)
+library(rgdal)
+library(rgeos)
 
 #' Skapar en AIC-fil med alla år separat.
 #' 
@@ -76,6 +80,7 @@ head(kull_dist) # måste skapa en kolumn med Namn och byta namn från year till 
 head(höjd)
 head(lemmel_medel) # ska bara ha uppgångsår här
 head(lemmel_andel) # börjar med andel bra lämmelhabitat här
+head(lemmel_varians)
 head(andel_myr) # ta bort koordinater och kommentar
 head(andel_vatten) # ta bort koordinater och kommentar
 head(vatten_skog)
@@ -135,10 +140,10 @@ kullar_avs <- bind_rows(kull_avs, tom_avs)
 length(kullar_avs$obsID)
 
 #distans till rödräv
-dist_rödräv <- distans_rödräv %>%
+dist_rödräv <- röd_dist %>%
   unite(obsID, År, Namn, sep = "-")
 
-head(dist_rödräv)
+View(dist_rödräv)
 length(dist_rödräv$obsID)
 
 # ta ut uppgångsåren för lämmelmedelvärdena
@@ -168,6 +173,8 @@ vattenA <- andel_vatten %>%
 
 head(vattenA)
 
+#den här är i rätt format
+head(vatten_skog)
 
 #' Dags att plocka fram ly- och kullramen och lägga på variabler.
 #' Börjar med avstånd till kull
@@ -208,4 +215,6 @@ View(t_sub)
 length(t_sub$Namn)
 length(unique(t_sub$Namn)) # 60 lyor är med. Det stämmer
 
-# AIC analys med mixes models
+# printar en fil med bara kärnlyor
+
+write_xlsx(t_sub, path = "kärnlyor Helags AIC.xlsx")

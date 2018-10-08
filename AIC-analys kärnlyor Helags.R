@@ -134,7 +134,7 @@ qqPlot(dts.log)# sämre
 
 #' Jag ska ha 3 faser, inte 4. 4 och 1 är låg. 2 är uppgång och 3 är topp
 
-dens[dens$Fas==4, ] <- 1
+dens$Fas[dens$Fas==4] <- 1
 
 max(dens$Fas) # max är 3
 
@@ -153,16 +153,20 @@ max(dens$Fas) # max är 3
 #' eftersom jag inte ska ha med dem i analysen. distans till rödräv innehåller dessutom 
 #' många NA's.
 
+#' 2012 är inte med eftersom det inte blev inlagt när jag gjorde distanserna till närmsta föryngring
+#' Ingen kull = inget avstånd att mära
+View(dens)
 dens.sub <- dens %>%
-  dplyr::select(-N, -E, -År, -närmaste_rödräv, -andel_bra_lämmelhabitat_uppgångsår)
+  dplyr::select(-N, -E, -närmaste_rödräv, -andel_bra_lämmelhabitat_uppgångsår)
 
 
 
 #tar bort rader med NA's
 dens.sub <- dens.sub[complete.cases(dens.sub), ]
-
+View(dens.sub)
 class(dens$Namn)
 dens.sub$Namn <- as.factor(dens.sub$Namn) #måste vara factor för att kunna analyseras
+dens.sub$År <- as.factor(dens.sub$År)
 names(dens.sub)
 rownames(dens.sub) <- NULL
 max(dens.sub$Fas)
@@ -183,16 +187,46 @@ pvars <- c("avs_kull","medelvärde_lämmelprediktion_uppgångsår",
 datsc <- dens.sub
 datsc[pvars] <- lapply(datsc[pvars],scale)
 
+## Gör en korrelationsmatris för att se om vissa variabler är korrelerade, det viss säga mäter samma effekt ####
+#' jag misstänker tillexempel att rödrävsdensitet är korrelerad med avstånd till trädgräns
+x <- datsc %>%
+  dplyr::select(rödräv_densitet, distans_till_skog, avs_kull, medelvärde_lämmelprediktion_uppgångsår, 
+                lemmel_var, hojd_over_havet, area_myr, area_vatten, distans_till_vatten)
+head(x)
+colnames(x) <- c("red", "forst", "dist.r", "lem", "lv", "alt", "a.m", "a.w", "dtw")
+res<-cor(x, method = c("pearson", "kendall", "spearman"))
+round(res, 2)
+library("Hmisc") # ger p-värden för korrelationsmatris
+res2 <- rcorr(as.matrix(x))
+res2
+res2$r
+res2$P
 
+symnum(res, abbr.colnames = FALSE)
+library("corrplot")
+
+
+
+corrplot(res, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+
+# Insignificant correlation are crossed
+corrplot(res2$r, type="upper", order="hclust", 
+         p.mat = res2$P, sig.level = 0.01, insig = "pch" )
 ## ***************** ALLA FASER *********************####
 
 #testar glmer. 4 faser nu. ska vara 3.Trots att Namn är random variable blir det för många frihetsgrader
+
 global.modell <- glmer(kull ~ factor(Fas) + avs_kull +  medelvärde_lämmelprediktion_uppgångsår
             + lemmel_var + rödräv_densitet + hojd_over_havet
             + area_myr + area_vatten + distans_till_vatten
             + distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
           data = datsc) # det ska vara logit eftersom kull är binär data. När jag lägger till Namn som en random variabel fattar R att Namn är grupper
+plot(cooks.distance(global.modell))
+qqPlot(global.modell)
 
+
+summary(global.modell)
 #' Jag fick samma varning, men det funkar: This works, 
 #' although we get a warning message about a too-large gradient -- I think 
 #' this is actually ignorable (we're still working on getting these error 
@@ -216,10 +250,10 @@ m.ave<-model.avg(model.set, subset = delta < 2)
 summary(m.ave)
 
 #Den här modellen var bäst, men inte klart bäst
-best_model <- glmer(factor(Fas)~ avs_kull + distans_till_skog +  
+best_model <- glmer(kull~ factor(Fas) + avs_kull + distans_till_skog +  
                     medelvärde_lämmelprediktion_uppgångsår + (1 | Namn), 
                   na.action = "na.fail", family = binomial(link = 'logit'), data = datsc)
-visreg(best_model)
+visreg(best_model) # plottar ej. Varför?
 confset.95p <- get.models(model.set, cumsum(weight) <= .95) # alla vikters summa som tas med ska vara 0.95. Alltså 95% sannolikhet för 
 
 avgmod.95p <- model.avg(confset.95p)
@@ -233,6 +267,28 @@ model.avg(d.modell, cumsum(weight) <= .95, fit = TRUE)
 # Models are also fitted if additional arguments are given
 model.avg(d.modell, cumsum(weight) <= .95, rank = "AIC")
 
+
+
+## Testar att lägga in År som en random effect eftersom jag mäter per år ####
+global.modell.år <- glmer(kull ~ factor(Fas) + avs_kull +  medelvärde_lämmelprediktion_uppgångsår
+                          + lemmel_var + rödräv_densitet + hojd_over_havet
+                          + area_myr + area_vatten + distans_till_vatten
+                          + distans_till_skog + (1 | Namn) + (1 | År), na.action = "na.fail", family = binomial(link = 'logit'), 
+                          data = datsc)
+
+stdz.model.år <- standardize(global.modell.år, standardize.y = FALSE)
+## increases max gradient -- larger warning
+library(MuMIn)
+model.set.år <- dredge(stdz.model.år)  ## slow, but running ...
+
+
+summary(model.set.år)
+summary(model.avg(model.set.år, subset = delta < 4)) # skillnaden mellan modellen med lägst AIC och den modellen med högst AIC som väljs
+Weights(model.set.år)
+
+
+
+
 #' Fas är väldigt signifikant.
 #' Testar därför att analyser de tre faserna separat
 
@@ -242,13 +298,10 @@ model.avg(d.modell, cumsum(weight) <= .95, rank = "AIC")
 fas.1 <- dens.sub %>% 
   filter(Fas == 1)
 
+length(fas.1$kull[fas.1$kull==1]) # 28 kullar under lågår
 length(fas.1$obsID) # om det är mindre än 10 obs per variabel i AIC analysen är det för få. 
 
-pvars <- c("avs_kull","medelvärde_lämmelprediktion_uppgångsår",
-           "lemmel_var","rödräv_densitet",
-           "hojd_over_havet","area_myr","area_vatten", "distans_till_vatten", "distans_till_skog")
-datsc.1 <- fas.1
-datsc.1[pvars] <- lapply(datsc.1[pvars],scale)
+
 
 fas.1.modell <- glmer(kull ~avs_kull +  medelvärde_lämmelprediktion_uppgångsår
                        + lemmel_var + rödräv_densitet + hojd_over_havet
@@ -265,6 +318,12 @@ ave.1<-model.avg(fas.1.set, subset = delta < 2)
 summary(ave.1)
 
 # Testar att skala om också så att det blir samma resultat
+pvars <- c("avs_kull","medelvärde_lämmelprediktion_uppgångsår",
+           "lemmel_var","rödräv_densitet",
+           "hojd_over_havet","area_myr","area_vatten", "distans_till_vatten", "distans_till_skog")
+datsc.1 <- fas.1
+datsc.1[pvars] <- lapply(datsc.1[pvars],scale)
+
 fas.1.modellsc <- glmer(kull ~avs_kull +  medelvärde_lämmelprediktion_uppgångsår
                       + lemmel_var + rödräv_densitet + hojd_over_havet
                       + area_myr + area_vatten + distans_till_vatten
@@ -291,6 +350,7 @@ length(fas.2$obsID) # om det är mindre än 10 obs per variabel i AIC analysen �
 #skalar om
 datsc.2 <- fas.2
 datsc.2[pvars] <- lapply(datsc.2[pvars],scale)
+View(datsc.2)
 
 fas.2.modell <- glmer(kull ~avs_kull +  medelvärde_lämmelprediktion_uppgångsår
                       + lemmel_var + rödräv_densitet + hojd_over_havet
@@ -314,6 +374,7 @@ fas.3 <- dens.sub %>%
   filter(Fas == 3)
 length(fas.3$obsID) # om det är mindre än 10 obs per variabel i AIC analysen är det för få. 
 #skalar om
+
 datsc.3 <- fas.3
 datsc.3[pvars] <- lapply(datsc.3[pvars],scale)
 
@@ -368,50 +429,50 @@ length(top.models$model) # 12 modeller
 top.models$model[1]
 
 f1 <- glm(kull ~ 1 + Fas + avs_kull + medelvärde_lämmelprediktion_uppgångsår + 
-            lemmel_var + area_vatten + distans_till_skog, data = dens.sub)
+            lemmel_var + area_vatten + distans_till_skog, family = binomial(), data = dens.sub)
 
 top.models$model[2]
 f2 <- glm(kull ~ 1 + Fas + avs_kull + medelvärde_lämmelprediktion_uppgångsår + lemmel_var + 
-            hojd_over_havet + area_myr + area_vatten + distans_till_skog, data = dens.sub)
+            hojd_over_havet + area_myr + area_vatten + distans_till_skog, family = binomial(),data = dens.sub)
 
 top.models$model[3]
 f3 <- glm(kull ~ 1 + Fas + avs_kull + medelvärde_lämmelprediktion_uppgångsår + 
-            area_vatten + distans_till_skog, data = dens.sub)
+            area_vatten + distans_till_skog,family = binomial(), data = dens.sub)
 top.models$model[4]
 
 f4 <- glm(kull ~ 1 + Fas + avs_kull + medelvärde_lämmelprediktion_uppgångsår + lemmel_var + 
-            hojd_over_havet + area_vatten + distans_till_skog, data = dens.sub)
+            hojd_over_havet + area_vatten + distans_till_skog,family = binomial(), data = dens.sub)
 top.models$model[5]
 f5<- glm(kull ~ 1 + Fas + avs_kull + medelvärde_lämmelprediktion_uppgångsår + hojd_over_havet + 
-  area_myr + area_vatten + distans_till_skog, data = dens.sub)
+  area_myr + area_vatten + distans_till_skog,family = binomial(), data = dens.sub)
 
 top.models$model[6]
 f6<-glm(kull ~ 1 + Fas + avs_kull + medelvärde_lämmelprediktion_uppgångsår + lemmel_var + 
-  area_myr + area_vatten + distans_till_skog, data = dens.sub)
+  area_myr + area_vatten + distans_till_skog,family = binomial(), data = dens.sub)
 
 top.models$model[7]
 f7<- glm(kull ~ 1 + Fas + avs_kull + medelvärde_lämmelprediktion_uppgångsår + 
-           hojd_over_havet + area_vatten + distans_till_skog, data = dens.sub)
+           hojd_over_havet + area_vatten + distans_till_skog,family = binomial(), data = dens.sub)
 
 top.models$model[8]
 f8 <- glm(kull ~ 1 + Fas + avs_kull + medelvärde_lämmelprediktion_uppgångsår + area_myr + 
-  area_vatten + distans_till_skog, data = dens.sub)
+  area_vatten + distans_till_skog,family = binomial(), data = dens.sub)
 
 top.models$model[9]
 f9 <- glm(kull ~ 1 + Fas + avs_kull + medelvärde_lämmelprediktion_uppgångsår + lemmel_var + 
-  rödräv_densitet + hojd_over_havet + area_myr + area_vatten + distans_till_skog, data = dens.sub)
+  rödräv_densitet + hojd_over_havet + area_myr + area_vatten + distans_till_skog,family = binomial(), data = dens.sub)
 
 top.models$model[10]
 f10 <- glm(kull ~ 1 + Fas + avs_kull + medelvärde_lämmelprediktion_uppgångsår + lemmel_var + 
-  area_vatten + distans_till_vatten + distans_till_skog, data = dens.sub)
+  area_vatten + distans_till_vatten + distans_till_skog,family = binomial(), data = dens.sub)
 
 top.models$model[11]
 f11 <- glm(kull ~ 1 + Fas + avs_kull + medelvärde_lämmelprediktion_uppgångsår + lemmel_var + 
-  rödräv_densitet + area_vatten + distans_till_skog, data = dens.sub)
+  rödräv_densitet + area_vatten + distans_till_skog,family = binomial(), data = dens.sub)
 
 top.models$model[12]
 f12 <- glm(kull ~ 1 + Fas + avs_kull + medelvärde_lämmelprediktion_uppgångsår + area_vatten + 
-  distans_till_vatten + distans_till_skog, data = dens.sub)
+  distans_till_vatten + distans_till_skog,family = binomial(), data = dens.sub)
 
 # Kollar på en av modellerna
 visreg(f1)

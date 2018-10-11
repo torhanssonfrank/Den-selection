@@ -193,7 +193,8 @@ x <- datsc %>%
   dplyr::select(rödräv_densitet, distans_till_skog, avs_kull, medelvärde_lämmelprediktion_uppgångsår, 
                 lemmel_var, hojd_over_havet, area_myr, area_vatten, distans_till_vatten)
 head(x)
-colnames(x) <- c("red", "forst", "dist.r", "lem", "lv", "alt", "a.m", "a.w", "dtw")
+colnames(x) <- c("red fox density", "distance to forest", "distance to reproduction", "mean lemming density", 
+                 "lemming variance", "altitude", "area bogs", "area water", "distance to water")
 res<-cor(x, method = c("pearson", "kendall", "spearman"))
 round(res, 2)
 library("Hmisc") # ger p-värden för korrelationsmatris
@@ -206,13 +207,26 @@ symnum(res, abbr.colnames = FALSE)
 library("corrplot")
 
 
+# Insignificant correlations display p-value (insig = "p-value")
+corrplot(res2$r, method = "circle", type="upper", order="hclust", 
+         p.mat = res2$P, sig.level = 0.05, insig = "p-value" , tl.cex = 0.7,
+         title = "Variable Correlation matrix, Helags", 
+         mar = c(1,0,3,0), tl.col = "black",
+         tl.srt = 20)
+mtext("Insignificant p-values are shown", side=3)
 
-corrplot(res, type = "upper", order = "hclust", 
-         tl.col = "black", tl.srt = 45)
+# testar utan distans till vatten och area vatten
 
-# Insignificant correlation are crossed
-corrplot(res2$r, type="upper", order="hclust", 
-         p.mat = res2$P, sig.level = 0.01, insig = "pch" )
+y<- x %>% 
+  dplyr::select(-"area water", -"distance to water")
+
+res3 <- rcorr(as.matrix(y))
+corrplot(res3$r, method = "circle", type="upper", order="hclust", 
+         p.mat = res3$P, sig.level = 0.05, insig = "p-value" , tl.cex = 0.7,
+         title = "Variable Correlation matrix, Helags", 
+         mar = c(1,0,3,0), tl.col = "black",
+         tl.srt = 20) # alla kvarvarande variabler är signifikant olika
+
 ## ***************** ALLA FASER *********************####
 
 #testar glmer. 4 faser nu. ska vara 3.Trots att Namn är random variable blir det för många frihetsgrader

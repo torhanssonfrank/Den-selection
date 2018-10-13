@@ -20,15 +20,15 @@ kullar <- as.data.frame(kullar)
 #' Gör en lång dataram som innehåller alla lyor för alla år med en kolumn för
 #' kull. 1 = kull, 0 = ingen kull
 
-År_ram <- as.data.frame(unique(kullar$År))
+År_ram <- as.data.frame(2000:2018)
 colnames(År_ram) <- "År"
 length(År_ram$År)
-
+View(År_ram)
 lyor
 
 
 
-# replikerar lyorna 18 gånger, det vill säga alla år med kull
+# replikerar lyorna 19 gånger, det vill säga alla år med kull
 
 lyor_long <-  bind_rows(replicate(length(År_ram$År), lyor, simplify = FALSE))
 View(lyor_long)
@@ -44,6 +44,12 @@ View(kullar)
   group_by(År) %>% 
   summarise(Fas = mean(Fas))
 
+#lägger på 2012. Det var ingen kull då så den finns inte i "kullar".
+
+År_fas_ram[nrow(År_fas_ram) + 1, ] = list(2012, 4) # list är bra om man vill lägga till olika datatyper. I det här fallet hade c funkat också eftersom både År och Fas är numeric
+
+År_fas_ram <- År_fas_ram[order(År_fas_ram$År), ] #ändrar ordningen till stigande så att 2012 inte är i slutet
+
 # replikerar alla år och faser 80 gånger, det vill säga antalet lyor
 År_multi <- as.data.frame(År_fas_ram[rep(seq_len(nrow(År_fas_ram)), each= length(lyor$Namn)), ])
 
@@ -55,19 +61,21 @@ View(År_multi)
 
 #' lägger ihop lyorna med år och fas. bind_cols går på position så viktigt att
 #' båda dataramarna har rätt längd
+length(År_multi$År)
+length(lyor_long$Namn)
 lyor_long <- bind_cols(lyor_long, År_multi)
 View(lyor_long)
 
 # skapar en kolumn som heter obsID och tar bort kommentar
 
 lyor_long <- lyor_long %>%
-  select(-Kommentar) %>% 
+  dplyr::select(-Kommentar) %>% 
   unite(obsID, År,Namn, sep = "-", remove = FALSE)
-
+head(lyor_long)
 # skapar en obsID-kolumn för kullar och tar bort kommentar
 
 kullar <- kullar %>% 
-  select(Namn, År, Fas) %>% 
+  dplyr::select(Namn, År, Fas) %>% 
   unite(obsID, År, Namn, sep = "-", remove = FALSE)
 
 

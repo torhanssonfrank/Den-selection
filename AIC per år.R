@@ -89,7 +89,7 @@ head(vatten_skog)
 
 # Plockar ut de kolumner jag behöver ur kullar
 kullar <- kullar %>%
-  select(Namn, År, Fas)
+  dplyr::select(Namn, År, Fas)
 
 
 
@@ -107,7 +107,7 @@ head(kullar)
 # Tar bort allt utom namn ur kärnlyor
 
 kärnlyor <- kärnlyor %>% 
-  select(Namn)
+  dplyr::select(Namn)
 
 head(kärnlyor)
 
@@ -120,9 +120,9 @@ View(kull_dist)
 
 kull_avs <- kull_dist%>%
   separate(litterID, c("År", "Namn"), remove = FALSE) %>%
-  rename(obsID = litterID) %>%
-  rename(avs_kull = distance) %>% 
-  select(obsID, avs_kull)
+  dplyr::rename(obsID = litterID) %>%
+  dplyr::rename(avs_kull = distance) %>% 
+  dplyr::select(obsID, avs_kull)
 
 head(kull_avs)
 
@@ -131,7 +131,7 @@ head(kull_avs)
 View(avs_tom_till_kull)
 
 tom_avs <- avs_tom_till_kull %>% 
-  select(obsID, avs_kull)
+  dplyr::select(obsID, avs_kull)
 
 head(tom_avs)
 
@@ -149,27 +149,27 @@ length(dist_rödräv$obsID)
 # ta ut uppgångsåren för lämmelmedelvärdena
 
 lemmelM_uppg <- lemmel_medel %>% 
-  select(Namn, medelvärde_lämmelprediktion_uppgångsår)
+  dplyr::select(Namn, medelvärde_lämmelprediktion_uppgångsår)
 head(lemmelM_uppg)
 
 
 # tar ut andel bra för uppgångsåren för lämmelandelarna
 head(lemmel_andel)
 lemmelA_uppg <- lemmel_andel %>%
-  select(Namn, andel_bra_lämmelhabitat_uppgångsår)
+  dplyr::select(Namn, andel_bra_lämmelhabitat_uppgångsår)
 head(lemmelA_uppg)  
 
 # ta bort koordinater och kommentarer
 head(andel_myr)
 
 myrA <- andel_myr %>% 
-  select(Namn, area_myr)
+  dplyr::select(Namn, area_myr)
 head(myrA)
 
 # ta bort koordinater och kommentarer
 head(andel_vatten)
 vattenA <- andel_vatten %>%
-  select(Namn, area_vatten)
+  dplyr::select(Namn, area_vatten)
 
 head(vattenA)
 
@@ -178,12 +178,13 @@ head(vatten_skog)
 
 #' Dags att plocka fram ly- och kullramen och lägga på variabler.
 #' Börjar med avstånd till kull
-head(lyor_long)
+View(lyor_long)
+head(kullar_avs)
 length(lyor_long$obsID)
-length(kullar_avs$obsID) # den här är tre obsar kortare än lyor_long
+length(kullar_avs$obsID) # den här är 83 obsar kortare än lyor_long
 udda<-lyor_long[!lyor_long$obsID %in% kullar_avs$obsID, ]
 
-udda # de obsar som fattas i kullar_avs är kullarna 2000, 2003 och 2006. Det var endast en kull då. Därför blir det inget avstånd från lyan med kull till en annan kull.
+udda # de obsar som fattas i kullar_avs är kullarna 2000, 2003 och 2006 och alla rader 2012. Det var endast en kull 2000, 2003 och 2006 och ingen kull 2012. Därför blir det inget avstånd från lyan med kull till en annan kull.
 
 k <- lyor_long %>%
   left_join(kullar_avs, by = "obsID") %>% 
@@ -203,10 +204,12 @@ t <- k %>%
   left_join(vatten_skog, by = "Namn")
   
 View(t)
+class(t$hojd_over_havet)
+t$hojd_over_havet <- as.numeric(t$hojd_over_havet)
 
 #printar en fil så att jag har en sparad med alla variabler
 
-write_xlsx(t, path = "fjällrävslyor AIC.xlsx")
+write_xlsx(t, path = "fjällrävslyor AIC 2000 - 2018.xlsx")
 
 # Plockar ut kärnlyorna. Det är bara dem jag ska använda
 
@@ -214,7 +217,6 @@ t_sub<-t[t$Namn %in% kärnlyor$Namn, ]
 View(t_sub)
 length(t_sub$Namn)
 length(unique(t_sub$Namn)) # 60 lyor är med. Det stämmer
-
 # printar en fil med bara kärnlyor
 
-write_xlsx(t_sub, path = "kärnlyor Helags AIC.xlsx")
+write_xlsx(t_sub, path = "kärnlyor Helags AIC 2000 - 2018.xlsx")

@@ -61,10 +61,15 @@ dens <- read_xlsx(path = "kärnlyor Helags AIC 2000 - 2018.xlsx")
 
 dens <- as.data.frame(dens)
 
-str(dens) # hojd_over_havet blev sparat som character
+str(dens)
 
-
-hist(dens$närmaste_rödräv, breaks = 100) # flera parametrar verkar inte vara normalfördelade
+# kollar outliers
+hist(dens$medelvärde_lämmelprediktion_uppgångsår, breaks = 100) # flera parametrar verkar inte vara normalfördelade
+hist(dens$rödräv_densitet, breaks = 100)
+hist(dens$area_myr, breaks = 100) # outlier
+hist(dens$area_vatten, breaks = 100) # outlier
+hist(dens$distans_till_vatten, breaks = 100) #outliers
+hist(dens$distans_till_skog, breaks = 100)
 
 par(mfrow=c(1,2))
 qqPlot(dens$avs_kull)
@@ -139,7 +144,7 @@ qqPlot(dts.log)# sämre
 
 dens$Fas[dens$Fas==4] <- 1
 View(dens)
-max(dens$Fas) # max är 3
+max(dens$Fas) # max är nu 3
 
 #Ändrar om faserna till stringnamn så att R inte råkar läsa dem som siffror (då kan det bli helfel)
 dens$Fas[dens$Fas==1] <- "low"
@@ -204,7 +209,7 @@ pvars <- c("medelvärde_lämmelprediktion_uppgångsår",
 datsc <- dens.sub
 datsc[pvars] <- lapply(datsc[pvars],scale)
 
-?scale
+View(datsc)
 ## ***************** ALLA FASER *********************####
 
 #' testar glmer. ska vara 3.Trots att Namn är random variable blir det för många frihetsgrader.
@@ -218,20 +223,34 @@ global.modell <- glmer(kull ~ Fas + medelvärde_lämmelprediktion_uppgångsår
             + area_myr + area_vatten + distans_till_vatten
             + distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
           data = datsc) # det ska vara logit eftersom kull är binär data. När jag lägger till Namn som en random variabel fattar R att Namn är grupper
-library(DHARMa)
+
 library(sjPlot)
 plot_model(global.modell, type = "slope")
 plot_model(global.modell, type = "diag") # qq-plot for kvantilerna för random effekt mot standard normalkvantiler
 plot_model(global.modell, type = "re")
 plot_model(global.modell, type = "resid" )
+
+library(DHARMa)
+# # vignette för DHARMa https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html
 simulateResiduals(global.modell, plot = TRUE)
 sim.output<-simulateResiduals(global.modell)
 plot(sim.output, quantreg = FALSE)
-sim.group<-recalculateResiduals(sim.output, datsc$Namn)
-plot(sim.group, quantreg = FALSE)
-vif(global.modell)
-class(global.modell)
+resid.fitted.plot<-plot(sim.output) #tar längre tid
+plotResiduals(datsc$rödräv_densitet , sim.output$scaledResiduals, quantreg = T) # några variabler har enskilt lite dålig fit. Rödräv och lämmel är bra
+resid.fitted.plot # kanske behöver presentera den här
+testOverdispersion(sim.output) # med för mycket overdispersion är det mer varians i datat än i modellen. Min overdispersion är inte för hög.
+testZeroInflation(sim.output) # tror inte det här är ett problem i binomial data. Kanske i negative binomial.
+testUniformity(simulationOutput = sim.output) #Heteroscedasticity: när variansen i en variabel är olika runt responsvariabeln. Till exempel om variansen är lägre vid låga värden av responsvariabeln än vid höga värden. Det ger ofta en konformad scatterplot.
+testDispersion(sim.output)# testar både over och underdispersion
 
+#det är bäst att använda de här där man grupperar per lya
+sim.group<-recalculateResiduals(sim.output, group = datsc$Namn)
+testDispersion(sim.group)
+testUniformity(sim.group)
+plot(sim.group, quantreg = FALSE)
+
+
+# tillbaka till analysen
 summary(global.modell)
 #' Jag fick samma varning, men det funkar: This works, 
 #' although we get a warning message about a too-large gradient -- I think 
@@ -272,7 +291,79 @@ model.avg(d.modell, cumsum(weight) <= .95, fit = TRUE)
 # Models are also fitted if additional arguments are given
 model.avg(d.modell, cumsum(weight) <= .95, rank = "AIC")
 
+# plottar
+sumtable<-summary(m.ave)
+sumtable
+sumtable$importance
+imp<-as.data.frame(sumtable$importance)
+imp$`sumtable$importance` # ska kanske ha med det här med i plotten.
+imp<-stack(imp) # ger error men det fungerar
+imp<-round(imp, digits = 2) #avrundar
+rownames(imp) <- NULL #tar bort radnamnen
+class(imp$`sumtable$importance` ) #sparas som "importance" och "numeric". Vet inte vad importance är för klass
+imp$`sumtable$importance` <- as.numeric(imp$`sumtable$importance`)
 
+imp <- paste0('r.i = ', imp$`sumtable$importance` ) # lägger till r.i =  framför alla relative importance värden. Outputen blir en vektor
+imp
+imp <- c("r.i = 1", "r.i = 1", "r.i = 1", "r.i = 0.73", "r.i = 0.53", "r.i = 0.45", "r.i = 0.25", "r.i = 0.05")
+imp
+coef<-as.data.frame(sumtable$coefmat.subset)
+ggdf<-as.data.frame(sumtable$coef.nmod)
+ggdf<-ggdf %>% 
+  dplyr::select(-`(Intercept)`)
+
+coefP <- coef %>%
+  dplyr::select(`Pr(>|z|)`) %>% 
+  slice(-1) # tar bort interceptet
+
+
+coefP
+p <- round(coefP$`Pr(>|z|)`, digits =5)#avrundar
+
+p <- paste0('p = ', p) # lägger till p = framför alla p-värden
+p[2]<-"p = < 2e-16" # för liten, blev 0. lägger in den manuellt
+p
+names(ggdf)
+
+colnames(ggdf) <- c("low phase", "peak phase","area bogs", "distance to forest", "distance to water",
+                     "mean lemming density", "area water", "red fox density")
+                      
+
+
+ggdf<-stack(ggdf) # gör bred data lång
+colnames(ggdf)<-c("Times_selected", "Variables")
+ggdf<-ggdf %>%
+  arrange(desc(Times_selected))
+
+
+#' blir ändå fel ordning på staplarna även fast jag sorterat med dplyr.
+#' VARNING! P-värdena är i fel ordning
+g <- ggplot(data=ggdf, aes(x=Variables, y=Times_selected, fill=Times_selected)) +
+  geom_bar(stat="identity", width=0.7)+
+  geom_text(aes(label= p), vjust=4, color="white", size = 7)+
+  geom_text(aes(label= imp), vjust=2, color="white", size = 7)+
+  labs(x = "Variables in selected models")+
+  labs(y = "Number of times selected in best models")+
+  theme_minimal()
+
+g+theme(axis.text=element_text(size=15, color = "black"), # ändrar stapeltextens storlek
+        axis.title=element_text(size=17,face="bold")) # ändrar axeltitlarnas storlek
+
+ggsave("ggdf.png", width = 35, height = 20, units = "cm") # sparar plotten i working directory
+
+#gör en tabell istället
+
+# blir konstig ordning så gör om
+impt <- c(1.00, 1.00, 1.00, 0.73, 0.53, 0.45, 0.25, 0.05)
+sumtable
+pt <- c("5.5e-05", "<2e-16","9e-05","0.0855", "0.1919", "0.1293", "0.4364", "0.7463")
+
+Variables <- c("low phase", "peak phase", "distance to forest","area bogs", "distance to water", "mean lemming probability",
+               "area water", "red fox density")
+fas.tabell <-cbind(as.character(Variables), impt, pt)
+fas.tabell
+colnames(fas.tabell) <- c("Variables", "relative importance", "p-value")
+fas.tabell
 
 ## Testar att lägga in År som en random effect eftersom jag mäter per år ####
 global.modell.år <- glmer(kull ~ Fas +  medelvärde_lämmelprediktion_uppgångsår
@@ -334,7 +425,58 @@ plot(fas.1.setsc, labAsExpr = TRUE)
 ave.1sc<-model.avg(fas.1.setsc, subset = delta < 2) 
 summary(ave.1sc) # blir samma sak som den oskalade datan
 
+# plottar
+sumtable.1<-summary(ave.1sc)
+sumtable.1
 
+imp1<-as.data.frame(sumtable.1$importance)
+imp1$`sumtable.1$importance` # ska kanske ha med det här med i plotten.
+imp1<-stack(imp1) # ger error men det fungerar
+imp1<-round(imp1, digits = 2) #avrundar
+rownames(imp1) <- NULL #tar bort radnamnen
+class(imp1$`sumtable.1$importance` ) #sparas som "importance" och "numeric". Vet inte vad importance är för klass
+imp1$`sumtable.1$importance` <- as.numeric(imp1$`sumtable.1$importance`)
+
+imp1 <- paste0('r.i = ', imp1$`sumtable.1$importance` ) # lägger till r.i =  framför alla relative importance värden. Outputen blir en vektor
+imp1
+coef1<-as.data.frame(sumtable.1$coefmat.subset)
+ggdf1<-as.data.frame(sumtable.1$coef.nmod)
+ggdf1<-ggdf1 %>% 
+  dplyr::select(-`(Intercept)`)
+
+coefP1 <- coef1 %>%
+  dplyr::select(`Pr(>|z|)`) %>% 
+  slice(-1) # tar bort interceptet
+
+
+coefP1
+p1 <- round(coefP1$`Pr(>|z|)`, digits =3)#avrundar
+p1 <- paste0('p = ', p1) # lägger till p = framför alla p-värden
+p1
+
+names(ggdf1)
+colnames(ggdf1) <- c("distance to forest","red fox density", "area bogs",
+                     "distance to water", "area water")
+                     
+
+ggdf1<-stack(ggdf1) # gör bred data lång
+colnames(ggdf1)<-c("Times_selected", "Variables")
+ggdf1
+
+
+
+g<-ggplot(data=ggdf1, aes(x=Variables, y=Times_selected, fill=Times_selected)) +
+  geom_bar(stat="identity", width=0.7)+
+  geom_text(aes(label= p1), vjust=4, color="white", size = 7)+
+  geom_text(aes(label= imp1), vjust=2, color="white", size = 7)+
+  labs(x = "Variables in selected models, lemming low phase")+
+  labs(y = "Number of times selected in best models")+
+  theme_minimal()
+
+g+theme(axis.text=element_text(size=15, color = "black"), # ändrar stapeltextens storlek
+        axis.title=element_text(size=17,face="bold")) # ändrar axeltitlarnas storlek
+
+ggsave("ggdf1.png", width = 35, height = 20, units = "cm") # sparar plotten i working directory
 
 ## Fas 2 ####
 fas.2 <- dens.sub %>% 
@@ -365,6 +507,7 @@ ave.2sc<-model.avg(fas.2.set, subset = delta < 2)
 summary(ave.2sc)
 plot(datsc.2$area_myr, datsc.2$kull)
 
+## test utan myr-outlier####
 # Myr blev signifikant här. Kollar om det finns outliers.
 hist(dens.sub$area_myr, breaks = 100)
 # Det gör det. ZZ084 är en stor oulier med enormt mycket myr.
@@ -401,6 +544,55 @@ plot(fas.2.set.mm, labAsExpr = TRUE)
 ave.2sc.mm<-model.avg(fas.2.set.mm, subset = delta < 2) 
 summary(ave.2sc.mm)
 
+# Gör en barplot
+sumtable.2<-summary(ave.2sc)
+
+
+imp2<-as.data.frame(sumtable.2$importance)
+imp2$`sumtable.2$importance` # ska kanske ha med det här med i plotten.
+imp2<-stack(imp2) # ger error men det fungerar
+imp2<-round(imp2, digits = 2) #avrundar
+rownames(imp2) <- NULL
+class(imp2$`sumtable.2$importance` ) #sparas som "importance" och "numeric". Vet inte vad importance är för klass
+imp2$`sumtable.2$importance` <- as.numeric(imp2$`sumtable.2$importance`)
+
+imp2 <- paste0('r.i = ', imp2$`sumtable.2$importance` ) # lägger till r.i =  framför alla relative importance värden. Outputen blir en vektor
+imp2
+coef2<-as.data.frame(sumtable.2$coefmat.subset)
+ggdf2<-as.data.frame(sumtable.2$coef.nmod)
+ggdf2<-ggdf2 %>% 
+  dplyr::select(-`(Intercept)`)
+
+coefP2 <- coef2 %>%
+  dplyr::select(`Pr(>|z|)`) %>% 
+  slice(-1) # tar bort interceptet
+
+
+coefP2
+p2 <- round(coefP2$`Pr(>|z|)`, digits =3)#avrundar
+p2 <- paste0('p = ', p2) # lägger till p = framför alla p-värden
+p2
+names(ggdf2)
+colnames(ggdf2) <- c("area bogs", "distance to forest","distance to water", "area water", "mean lemming probability",
+                     "red fox density")
+
+ggdf2<-stack(ggdf2) # gör bred data lång
+colnames(ggdf2)<-c("Times_selected", "Variables")
+ggdf2
+
+
+g<-ggplot(data=ggdf2, aes(x=Variables, y=Times_selected, fill=Times_selected)) +
+  geom_bar(stat="identity", width=0.7)+
+  geom_text(aes(label= p2), vjust=5, color="white", size = 7)+
+  geom_text(aes(label= imp2), vjust=3, color="white", size = 7)+
+  labs(x = "Variables in selected models, lemming increase phase")+
+  labs(y = "Number of times selected in best models")+
+  theme_minimal()
+
+g+theme(axis.text=element_text(size=15, color = "black"), # ändrar stapeltextens storlek
+        axis.title=element_text(size=17,face="bold")) # ändrar axeltitlarnas storlek
+
+ggsave("ggdf2.png", width = 35, height = 20, units = "cm") # sparar plotten i working directory
 ## Fas 3 ####
 
 fas.3 <- dens.sub %>% 
@@ -429,18 +621,55 @@ par(mar = c(3,5,6,4))
 plot(fas.3.set, labAsExpr = TRUE)
 ave.3sc<-model.avg(fas.3.set, subset = delta < 2) 
 sumtable.3<-summary(ave.3sc)
-par(mar = c(3,6,6,1))
-?margin
-ggdf<-as.data.frame(sumtable.3$coef.nmod)
+sumtable.3
 
-ggdf<-ggdf %>% 
+imp3<-as.data.frame(sumtable.3$importance)
+imp3$`sumtable.3$importance` # ska kanske ha med det här med i plotten.
+imp3<-stack(imp3) # ger error men det fungerar
+imp3<-round(imp3, digits = 2) #avrundar
+rownames(imp3) <- NULL
+class(imp3$`sumtable.3$importance` ) #sparas som "importance" och "numeric". Vet inte vad importance är för klass
+imp3$`sumtable.3$importance` <- as.numeric(imp3$`sumtable.3$importance`)
+
+imp3 <- paste0('r.i = ', imp3$`sumtable.3$importance` ) # lägger till r.i =  framför alla relative importance värden. Outputen blir en vektor
+imp3
+coef3<-as.data.frame(sumtable.3$coefmat.subset)
+ggdf3<-as.data.frame(sumtable.3$coef.nmod)
+ggdf3<-ggdf3 %>% 
   dplyr::select(-`(Intercept)`)
-barplot(ggdf, col = "red", cex.names = 0.6 )
+
+coefP3 <- coef3 %>%
+  dplyr::select(`Pr(>|z|)`) %>% 
+  slice(-1)
+
+
+coefP3
+p3 <- round(coefP3$`Pr(>|z|)`, digits =4)#avrundar
+p3 <- paste0('p = ', p3) # lägger till p = framför alla p-värden
+p3
+colnames(ggdf3) <- c("distance to forest", "mean lemming probability", "distance to water", 
+                    "area water","area bogs", "red fox density")
+
+ggdf3<-stack(ggdf3) # gör bred data lång
+colnames(ggdf3)<-c("Times_selected", "Variables")
+ggdf3
 
 
 
-ggplot(data=ggdf, aes(x=dose, y=len)) +
-  geom_bar(stat="identity", width=0.5)
+g<-ggplot(data=ggdf3, aes(x=Variables, y=Times_selected, fill=Times_selected)) +
+  geom_bar(stat="identity", width=0.7)+
+  geom_text(aes(label= p3), vjust=4, color="white", size = 7)+
+  geom_text(aes(label= imp3), vjust=2, color="white", size = 7)+
+  labs(x = "Variables in selected models, lemming peak years")+
+  labs(y = "Number of times selected in best models")+
+  theme_minimal()
+
+g+theme(axis.text=element_text(size=15, color = "black"), # ändrar stapeltextens storlek
+        axis.title=element_text(size=17,face="bold")) # ändrar axeltitlarnas storlek
+
+ggsave("ggdf3.png", width = 40, height = 20, units = "cm") # sparar plotten i working directory
+
+
 ##' ****** Kod jag testat runt lite med **********#########
 ##' 
 ##' 

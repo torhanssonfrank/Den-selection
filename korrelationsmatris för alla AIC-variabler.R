@@ -75,6 +75,5 @@ plot(variabler$kull, variabler$Namn)
 namnkorr<-glmer(kull~ (1 | Namn), data = variabler, family = binomial)
 
 residout<-simulateResiduals(namnkorr)
-
 plot(residout, quantreg = FALSE, asFactor = TRUE) # qq-ploten tyder på att det är ett linjärt samband. Det räcker för att anta att Namn inte är oberoende.
 

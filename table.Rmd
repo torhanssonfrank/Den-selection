@@ -1,10 +1,10 @@
 ---
 title: "VIF-tabell"
 output:
-  reference_docx: mytable.docx
+  word_document: default
   html_document: default
   pdf_document: default
-  word_document: default
+  reference_docx: mytable.docx
 ---
 
 ```{r setup, include=FALSE}
@@ -37,11 +37,16 @@ library(kableExtra)
 ?kable_styling
 library(knitr)
 
-
+```
 kable(tabley) %>%
   kable_styling(bootstrap_options = "striped", full_width = F, position = "float_right") %>% 
   add_header_above(c(" ", "Table 1. VIF-values for variables included in the global model" = 1), align = "left"  )
 
    
+```
+```{r}
+kable(fas.tabell) %>%
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "float_right")
+ 
 ```
 

@@ -22,7 +22,7 @@ install.packages("rmarkdown")
 install.packages("dsm")
 install.packages("gdata")
 install.packages("Distance")
-
+install.packages("mrds")
 
 library(Distance)
 library(knitr)
@@ -120,7 +120,7 @@ head(ripor_analys)
 rip_perp <-ripor_analys %>% 
   dplyr::select(Sample.Label,observation, distance, period, weather)
 
-#kanske måste ha alla kolumner för att det ska funka
+# måste ha alla kolumner som Distance kräver för att det ska funka
 namevector1 <-"Area"
 rip_perp[ ,namevector1] <- (1500^2) * pi #kör en area som är samma som lybuffer
 
@@ -146,7 +146,7 @@ View(rip_perp)
 class(rip_perp$Area)
 class(rip_perp$Effort)
 
-class(rip_perp) # DEN VAR BÅDE DATAFRAME, TBL och TBL_DF på samma gång! Därför funkade det inte att lägga på en detection function. Det måste vara en ren data frame
+class(rip_perp) # DEN VAR BÅDE DATAFRAME, TBL och TBL_DF på samma gång! Read_xlsx läser in datat så. Därför funkade det inte att lägga på en detection function. Det måste vara en ren data frame
 rip_perp <- as.data.frame(rip_perp) #ändrar om till data frame
 
 
@@ -158,6 +158,7 @@ max(rip_perp$distance)
 #Bara 18 R och 19 D
 length(which(rip_perp$observation=="R"))
 length(which(rip_perp$observation=="D"))
+length(rip_perp$observation)
 
 #sätter en half-normal detection funktion först.
 hist(rip_perp$distance)
@@ -362,13 +363,24 @@ colnames(ripa_estimated) <- c("lya", "uppskattat_antal_ripor", "standard_error")
 ripa_estimated
 write_xlsx(ripa_estimated, path = "Rawdata/Uppskattat antal ripor vår distance_sampling.xlsx")
 
-# testar bara dalripa
+#' testar detection function för dalripa separat och gör histogram
+#' för distans från linjen för fjällripa och dalripa för att jämföra
 
-dalripa ="D"
+
 dal_perp <- rip_perp %>% 
-  filter(observation %in% dalripa)
+  filter(observation == "D")
+length(dal_perp$observation)
 
-hist(dal_perp$distance, breaks = 100 )
+fjell_perp <- rip_perp %>% 
+  filter(observation == "F")
+  
+fjell_perp
+length(fjell_perp$observation)
+
+hist(fjell_perp$distance, main = "Rock ptarmigan observations (n = 105)", xlab = "distance from transect line (m)")
+hist(dal_perp$distance, main = "Willow ptarmigan observations (n = 19)", xlab = "distance from transect line (m)")
+
+
 
 d.hn.df <- ds(dal_perp, truncation = 300, adjustment = NULL)
 summary(d.hn.df)
@@ -380,6 +392,11 @@ summary(d.hn.df.cos)
 gof_ds(d.hn.df.cos)
 plot(d.hn.df.cos)
 
+d.hn.df.hermite <- ds(dal_perp, truncation = 300, adjustment = "herm")
+summary(d.hn.df.hermite)
+gof_ds(d.hn.df.hermite, chisq = TRUE )
+plot(d.hn.df.hermite)
+
 d.hr.df <- ds(dal_perp, truncation = 300, adjustment = NULL)
 summary(d.hr.df)
 gof_ds(d.hr.df)
@@ -388,9 +405,17 @@ plot(d.hr.df)
 d.hr.df.cos <- ds(dal_perp, truncation = 300)
 summary(d.hr.df.cos)
 gof_ds(d.hr.df.cos)
-plot(d.hr.df.cos)
+plot(d.hr.df)
 
 d.hr.df.poly <- d.hr.df.cos <- ds(dal_perp, truncation = 300, adjustment = "poly" )
 summary(d.hr.df.poly)
 gof_ds(d.hr.df.poly)
 plot(d.hr.df.poly)
+
+d.fourier.df.cos <- ds(dal_perp, truncation=300, key = "unif") # cos är default
+summary(d.fourier.df.cos)
+gof_ds(d.fourier.df.cos, chisq = TRUE ) # inte så bra qq-plot. P = 0.37
+plot(d.fourier.df.cos)
+
+# half normal detection function med cosine blev bäst här också
+summarize_ds_models(d.hn.df, d.hn.df.cos, d.hn.df.hermite, d.hr.df, d.hr.df.cos, d.hr.df.poly, d.fourier.df.cos) 

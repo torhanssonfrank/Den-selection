@@ -58,9 +58,11 @@ update.packages(ask = FALSE) #flyttade över paketen från mappen för den äldr
 # AIC-analys av kärnlyor i Helagspopulationen
 
 dens <- read_xlsx(path = "kärnlyor Helags AIC 2000 - 2018.xlsx")
-
+dens.short <- read_xlsx(path = "Den and territory selection/Rawdata/antal kullar per lya 2000_2018.xlsx")
+dens.core.short <- readOGR(dsn = "Lyor, kullar, gps-punkter, yta och avstånd/lyor helags kärnområde.shp")
 dens <- as.data.frame(dens)
-
+dens.short <- as.data.frame(dens.short)
+dens.core.short <- as.data.frame(dens.core.short)
 str(dens)
 
 # kollar outliers
@@ -177,12 +179,19 @@ Anova(lem)
 #' eftersom jag inte ska ha med dem i analysen. distans till rödräv innehåller dessutom 
 #' många NA's.
 
-
+names(dens)
 View(dens)
 dens.sub <- dens %>%
-  dplyr::select(-N, -E, -avs_kull, -närmaste_rödräv, -lemmel_var, -andel_bra_lämmelhabitat_uppgångsår)
+  dplyr::select(-N, -E,-avs_kull, -närmaste_rödräv,  -andel_bra_lämmelhabitat_uppgångsår, -lemmel_var, -hojd_over_havet)
 
+# ändrar kvadratmeter till kvadratkm och m till km, det gör att det går att lägga på en GLMM
+dens.sub <- dens.sub %>%
+  mutate(area_myr = area_myr/1000000) %>% 
+  mutate(area_vatten = area_vatten/1000000) %>%
+  mutate(distans_till_vatten = distans_till_vatten/1000) %>% 
+  mutate(distans_till_skog = distans_till_skog/1000)
 
+View(dens.sub)
 #tar bort rader med NA's. Tror dock inte det finns några.
 dens.sub <- dens.sub[complete.cases(dens.sub), ]
 View(dens.sub)
@@ -265,7 +274,7 @@ model.set <- dredge(stdz.model)  ## slow, but running ...
 
 
 summary(model.set)
-summary(model.avg(model.set, subset = delta < 4)) # skillnaden mellan modellen med lägst AIC och den modellen med högst AIC som väljs
+summary(model.avg(model.set, subset = delta < 6)) # skillnaden mellan modellen med lägst AIC och den modellen med högst AIC som väljs
 Weights(model.set)
 
 par(mfrow=c(1,1))
@@ -278,6 +287,9 @@ summary(m.ave)
 best_model <- glmer(kull~ factor(Fas)+ area_myr + distans_till_skog + (1 | Namn), 
                   na.action = "na.fail", family = binomial(link = 'logit'), data = datsc)
 plot(best_model) # plottar ej. Varför?
+
+#' Att använda 95% av vikterna är en alternativ metod för model inference. Harrison et al 2018 rekommenderar dock inte det
+#' eftersom modellerna blir för komplicerade med för många modeller med hög deltaAIC.
 confset.95p <- get.models(model.set, cumsum(weight) <= .95) # alla vikters summa som tas med ska vara 0.95. Alltså 95% sannolikhet för 
 
 avgmod.95p <- model.avg(confset.95p)
@@ -397,18 +409,61 @@ summary(m.ave.år) # ingen större skillnad. Bara att lågår inte är signifika
 
 fas.1 <- dens.sub %>% 
   filter(Fas == "low")
-
+View(fas.1)
 length(fas.1$kull[fas.1$kull==1]) # 29 kullar under lågår
-length(fas.1$obsID) # om det är mindre än 10 obs per variabel i AIC analysen är det för få. 
+length(fas.1$obsID)
+
+View(fas.1)
+# Jag tar bara med de variabler jag behöver
+fas.1.km <- fas.1 %>%
+  dplyr::select(kull, Namn, pvars)
+View(fas.1.km)
 
 
-# Testar att skala om också så att det blir samma resultat
+# Area skalad till kvadratkm och distans till km
+fas.1.modell <- glmer(kull ~ medelvärde_lämmelprediktion_uppgångsår
+                        + rödräv_densitet
+                        + area_myr + area_vatten + distans_till_vatten
+                        + distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
+                        data = fas.1.km)
+
+
+psd.1 <- partial.sd(fas.1.modell)
+
+z.fas.1.km <- stdize(fas.1.km, scale = c(NA,NA, psd.1[-1]), center = FALSE) # centrerar inte. NA och NA tar bort responsvariabeln och Namn. Kull ska inte ändras och Namn kan inte ändras.
+head(z.fas.1.km)
+hist(z.fas.1.km$z.medelvärde_lämmelprediktion_uppgångsår) # de är inte helt unimodala. Outliers ställer till problem. Skiter nog i det.
+hist(z.fas.1.km$z.rödräv_densitet)
+hist(z.fas.1.km$z.area_myr)
+hist(z.fas.1.km$z.area_vatten)
+hist(z.fas.1.km$z.distans_till_vatten)
+hist(z.fas.1.km$z.distans_till_skog)
+
+fas.1.modell.PSD <- glmer(kull ~ z.medelvärde_lämmelprediktion_uppgångsår
+                      + z.rödräv_densitet
+                      + z.area_myr + z.area_vatten + z.distans_till_vatten
+                      + z.distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
+                      data = z.fas.1.km)
+
+
+
+fas.1.set.unt.z <- dredge(fas.1.modell.PSD, beta = "none") #koefficienterna ej transformerade. Den här är nog bäst.
+fas.1.set.PSD <- dredge(fas.1.modell.PSD, beta = "partial.sd") # koefficienterna transformeras baserat på partial standard deviations
+fas.1.set.unt <- dredge(fas.1.modell, beta = "none") #koefficienterna ej transformerade
+fas.1.set <- dredge(fas.1.modell, beta = "partial.sd") # koefficienterna transformeras baserat på partial standard deviations
+
+summary(model.avg(fas.1.set.unt.z, subset = delta < 6))
+summary(model.avg(fas.1.set.PSD, subset = delta < 2))
+summary(model.avg(fas.1.set.unt, subset = delta < 2)) #koefficienterna ej transformerade
+summary(model.avg(fas.1.set, subset = delta < 2))
+
+# Skalar om med sample standard deviations. Ej rekommenderat av Cade.
 pvars <- c("medelvärde_lämmelprediktion_uppgångsår",
-           "rödräv_densitet",
-           "hojd_over_havet","area_myr","area_vatten", "distans_till_vatten", "distans_till_skog")
+           "rödräv_densitet","area_myr",
+           "area_vatten", "distans_till_vatten", "distans_till_skog")
 datsc.1 <- fas.1
 datsc.1[pvars] <- lapply(datsc.1[pvars],scale)
-
+View(datsc.1)
 fas.1.modellsc <- glmer(kull ~ medelvärde_lämmelprediktion_uppgångsår
                       + rödräv_densitet
                       + area_myr + area_vatten + distans_till_vatten
@@ -416,12 +471,19 @@ fas.1.modellsc <- glmer(kull ~ medelvärde_lämmelprediktion_uppgångsår
                       data = datsc.1)
 
 stdz.model.1 <- standardize(fas.1.modellsc, standardize.y = FALSE)
+stdz.model.1
+?scale
+?`standardize,merMod-method`
 fas.1.setsc <- dredge(stdz.model.1)
 
+nrow(datsc.1) ## 420
+ncol(getME(fas.1.modellsc,"X")) # 7, om det är mindre än 10 obs per variabel i AIC analysen är det för få. Jag har 420/7 = 60
 
 
+summary(model.avg(fas.1.setsc, subset = delta < 2))
 par(mar = c(3,5,6,4))
 plot(fas.1.setsc, labAsExpr = TRUE)
+summary(model.avg(fas.1.setsc, subset = delta < 6))
 ave.1sc<-model.avg(fas.1.setsc, subset = delta < 2) 
 summary(ave.1sc) # blir samma sak som den oskalade datan
 
@@ -481,9 +543,38 @@ ggsave("ggdf1.png", width = 35, height = 20, units = "cm") # sparar plotten i wo
 ## Fas 2 ####
 fas.2 <- dens.sub %>% 
   filter(Fas == "increase")
-length(fas.2$kull[fas.1$kull==1])
+  
+length(fas.2$kull[fas.2$kull==1])
 length(fas.2$obsID) # om det är mindre än 10 obs per variabel i AIC analysen är det för få. 
 
+
+# skalar om med partial standard deviations
+fas.2.km <- fas.2 %>% 
+  dplyr::select(kull, Namn, pvars)
+
+View(fas.2.km)
+fas.2.modell <- glmer(kull ~ medelvärde_lämmelprediktion_uppgångsår
+                      + rödräv_densitet
+                      + area_myr + area_vatten + distans_till_vatten
+                      + distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
+                      data = fas.2.km)
+
+
+psd.2 <- partial.sd(fas.2.modell)
+
+z.fas.2.km <- stdize(fas.2.km, scale = c(NA,NA, psd.2[-1]), center = FALSE) # centrerar inte. NA och NA tar bort responsvariabeln och Namn. Kull ska inte ändras och Namn kan inte ändras.
+
+
+fas.2.modell.PSD <- glmer(kull ~ z.medelvärde_lämmelprediktion_uppgångsår
+                          + z.rödräv_densitet
+                          + z.area_myr + z.area_vatten + z.distans_till_vatten
+                          + z.distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
+                          data = z.fas.2.km)
+
+
+
+fas.2.set.unt.z <- dredge(fas.2.modell.PSD, beta = "none")
+summary(model.avg(fas.2.set.unt.z, subset = delta < 6))
 #skalar om
 pvars <- c("medelvärde_lämmelprediktion_uppgångsår",
            "rödräv_densitet",
@@ -503,6 +594,7 @@ fas.2.set <- dredge(stdz.model.2)
 
 par(mar = c(3,5,6,4))
 plot(fas.2.set, labAsExpr = TRUE)
+summary(model.avg(fas.2.set, subset = delta < 6))
 ave.2sc<-model.avg(fas.2.set, subset = delta < 2) 
 summary(ave.2sc)
 plot(datsc.2$area_myr, datsc.2$kull)
@@ -593,14 +685,46 @@ g+theme(axis.text=element_text(size=15, color = "black"), # ändrar stapeltexten
         axis.title=element_text(size=17,face="bold")) # ändrar axeltitlarnas storlek
 
 ggsave("ggdf2.png", width = 35, height = 20, units = "cm") # sparar plotten i working directory
+
+
 ## Fas 3 ####
 
 fas.3 <- dens.sub %>% 
   filter(Fas == "peak")
 length(fas.3$kull[fas.3$kull == 1])
-View(fas.3)
+
 length(fas.3$obsID) # om det är mindre än 10 obs per variabel i AIC analysen är det för få. 
-#skalar om
+
+# skalar om med partial standard deviations
+fas.3.km <- fas.3 %>% 
+  dplyr::select(kull, Namn, pvars)
+
+View(fas.3.km)
+fas.3.modell <- glmer(kull ~ medelvärde_lämmelprediktion_uppgångsår
+                      + rödräv_densitet
+                      + area_myr + area_vatten + distans_till_vatten
+                      + distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
+                      data = fas.3.km)
+
+
+psd.3 <- partial.sd(fas.3.modell)
+
+z.fas.3.km <- stdize(fas.3.km, scale = c(NA,NA, psd.3[-1]), center = FALSE) # centrerar inte. NA och NA tar bort responsvariabeln och Namn. Kull ska inte ändras och Namn kan inte ändras.
+
+
+fas.3.modell.PSD <- glmer(kull ~ z.medelvärde_lämmelprediktion_uppgångsår
+                          + z.rödräv_densitet
+                          + z.area_myr + z.area_vatten + z.distans_till_vatten
+                          + z.distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
+                          data = z.fas.3.km)
+
+
+
+fas.3.set.unt.z <- dredge(fas.3.modell.PSD, beta = "none")
+summary(model.avg(fas.3.set.unt.z, subset = delta < 6))
+
+
+#skalar om med sample standard deviations. Ej rekommenderat av Cade.
 pvars <- c("medelvärde_lämmelprediktion_uppgångsår",
            "rödräv_densitet",
            "hojd_over_havet","area_myr","area_vatten", "distans_till_vatten", "distans_till_skog")
@@ -615,10 +739,14 @@ fas.3.modell <- glmer(kull ~ medelvärde_lämmelprediktion_uppgångsår
 
 
 stdz.model.3 <- standardize(fas.3.modell, standardize.y = FALSE)
+?standardize
+display(stdz.model.3)
 fas.3.set <- dredge(stdz.model.3)
+
 
 par(mar = c(3,5,6,4))
 plot(fas.3.set, labAsExpr = TRUE)
+summary(model.avg(fas.3.set, subset = delta < 6))
 ave.3sc<-model.avg(fas.3.set, subset = delta < 2) 
 sumtable.3<-summary(ave.3sc)
 sumtable.3
@@ -669,7 +797,104 @@ g+theme(axis.text=element_text(size=15, color = "black"), # ändrar stapeltexten
 
 ggsave("ggdf3.png", width = 40, height = 20, units = "cm") # sparar plotten i working directory
 
+## TABELLER PÅ ANTAL KULLAR OCH VALPLYOR####
+# tittar lite på antal reproduktioner per fas och antal lyor med kull
 
+length(fas.1$obsID)/60
+length(fas.2$obsID)/60
+length(fas.3$obsID)/60
+# Antal lyor med kull mellan 2000 - 2018
+length(unique(dens.sub$Namn[dens.sub$kull == 1]))
+unique(dens.sub$Namn[dens.sub$kull == 1])
+length(dens.sub$Namn[dens.sub$kull == 1])
+
+#Kollar några lyor separat
+#Under vilka faser har Hulke och Snusestöten haft kull
+dens.sub$Fas[dens.sub$kull == 1 & dens.sub$Namn == "FSZZ033"]
+dens.sub$Fas[dens.sub$kull == 1 & dens.sub$Namn == "FSZZ020"]
+
+length(dens.sub$kull[dens.sub$kull == 1 & dens.sub$Namn == "FSZZ033"])
+
+#Vilka lyor har kull per fas
+unique(dens.sub$Namn[dens.sub$kull == 1 & dens.sub$Fas == "low"])
+unique(dens.sub$Namn[dens.sub$kull == 1 & dens.sub$Fas == "increase"])
+unique(dens.sub$Namn[dens.sub$kull == 1 & dens.sub$Fas == "peak"])
+
+# plockar ut lyorna med kull för varje fas ur dens -dataramen. Den har koordinater
+# ändrar om koordinaterna till numeric först så slipper jag göra det för varje fas
+dens$N <- as.numeric(dens$N)
+dens$E <- as.numeric(dens$E)
+#low
+low.lit.dens <- dens %>%
+  dplyr::select(Namn,Fas, N, E, kull) %>% 
+  filter(Fas == "low") %>%
+  filter(kull>0) %>% 
+  group_by(Namn, N, E) %>% 
+  summarise(`Total litters`= sum(kull))
+
+View(low.lit.dens)
+
+# increase
+inc.lit.dens <- dens %>%
+  dplyr::select(Namn,Fas, N, E, kull) %>% 
+  filter(Fas == "increase") %>%
+  filter(kull>0) %>% 
+  group_by(Namn, N, E) %>% 
+  summarise(`Total litters`= sum(kull))
+
+View(inc.lit.dens)
+
+# peak
+peak.lit.dens <- dens %>%
+  dplyr::select(Namn,Fas, N, E, kull) %>% 
+  filter(Fas == "peak") %>%
+  filter(kull>0) %>% 
+  group_by(Namn, N, E) %>% 
+  summarise(`Total litters`= sum(kull))
+
+View(peak.lit.dens)
+
+
+coordinates(low.lit.dens) <- c("E", "N")
+proj4string(low.lit.dens) <- CRS("+init=EPSG:3006")
+summary(low.lit.dens) #sweref och projected
+
+coordinates(inc.lit.dens) <- c("E", "N")
+proj4string(inc.lit.dens) <- CRS("+init=EPSG:3006")
+summary(inc.lit.dens) #sweref och projected
+
+coordinates(peak.lit.dens) <- c("E", "N")
+proj4string(peak.lit.dens) <- CRS("+init=EPSG:3006")
+summary(peak.lit.dens) #sweref och projected
+
+writeOGR(low.lit.dens, dsn = "Lyor, kullar, gps-punkter, yta och avstånd/Kullar per lya och fas", layer ="kullar.lågår",  driver = "ESRI Shapefile")
+writeOGR(inc.lit.dens, dsn = "Lyor, kullar, gps-punkter, yta och avstånd/Kullar per lya och fas", layer ="kullar.uppgång",  driver = "ESRI Shapefile")
+writeOGR(peak.lit.dens, dsn = "Lyor, kullar, gps-punkter, yta och avstånd/Kullar per lya och fas", layer ="kullar.toppår",  driver = "ESRI Shapefile")
+
+?writeOGR
+
+#' Totala kullar per lya för tabell. Onödig kod eftersom jag har den ovan, men jag skrev den först.
+#' Den har dock alla kullar totalt för alla valplyor
+head(dens.short)
+length(dens.short$Namn)
+head(dens.core.short)
+short.sub<-dens.short[dens.short$Namn %in% dens.core.short$Namn, ]
+length(short.sub$Namn)
+head(short.sub)
+class(short.sub$kullar_totalt)
+litter.dens<-subset(short.sub, short.sub$kullar_totalt>=1)
+length(litter.dens$Namn)
+View(litter.dens)
+litter.sorted <- litter.dens %>% 
+  arrange(desc(kullar_totalt))
+
+
+litter.sorted <- litter.sorted %>% 
+  dplyr::select(Namn, kullar_totalt) %>% 
+  dplyr::rename(`Den code` = Namn) %>% 
+  dplyr::rename(`Total litters` = kullar_totalt)
+
+View(litter.sorted)
 ##' ****** Kod jag testat runt lite med **********#########
 ##' 
 ##' 

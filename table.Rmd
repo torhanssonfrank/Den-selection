@@ -1,10 +1,9 @@
 ---
 title: "VIF-tabell"
 output:
+  
+  toc: TRUE
   word_document: default
-  html_document: default
-  pdf_document: default
-  reference_docx: mytable.docx
 ---
 
 ```{r setup, include=FALSE}
@@ -47,6 +46,13 @@ kable(tabley) %>%
 ```{r}
 kable(fas.tabell) %>%
   kable_styling(bootstrap_options = "striped", full_width = F, position = "float_right")
+```{r}
+kable(litter.sorted) %>%
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "float_right")
+```
  
+```
+```{r}
+
 ```
 

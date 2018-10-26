@@ -1,13 +1,11 @@
 ---
 title: "VIF-tabell"
-output:
-  
-  toc: TRUE
-  word_document: default
+output: html_document
+
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include= TRUE}
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ## R Markdown
@@ -29,30 +27,27 @@ plot(pressure)
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
-```{r}
-install.packages("kableExtra")
-install.packages("contrib.url", repos = 'http://cran.us.r-project.org')
-library(kableExtra)
-?kable_styling
-library(knitr)
+```{r vif, echo=FALSE}
 
-```
+library(kableExtra)
+library(knitr)
 kable(tabley) %>%
   kable_styling(bootstrap_options = "striped", full_width = F, position = "float_right") %>% 
   add_header_above(c(" ", "Table 1. VIF-values for variables included in the global model" = 1), align = "left"  )
+```
+
 
    
-```
-```{r}
-kable(fas.tabell) %>%
+
+```{r print.table, echo = FALSE}
+
+options(knitr.kable.NA = '') # gör så NA inte skrivs ut i tabellen. Blir blanksteg istället
+kable(coefs.table) %>%
   kable_styling(bootstrap_options = "striped", full_width = F, position = "float_right")
-```{r}
+
 kable(litter.sorted) %>%
   kable_styling(bootstrap_options = "striped", full_width = F, position = "float_right")
 ```
  
-```
-```{r}
 
-```
 

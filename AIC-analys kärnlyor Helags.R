@@ -211,38 +211,54 @@ rownames(dens.sub) <- NULL
 
 #' får varning att variablerna är på för olika skala. Nä jag kör glmer 1: Some predictor variables are on very different scales: consider rescaling
 #' Förklaring till problemet finns här: https://stackoverflow.com/questions/26904580/error-messages-when-running-glmer-in-r
-#' Skalar om
-pvars <- c("medelvärde_lämmelprediktion_uppgångsår",
-           "rödräv_densitet",
-           "hojd_over_havet","area_myr","area_vatten", "distans_till_vatten", "distans_till_skog")
-datsc <- dens.sub
-datsc[pvars] <- lapply(datsc[pvars],scale)
+#' En lösning är att ändra från kvadratmeter till kvadratkm och meter till km. Det gjorde jag i slutändan. Då kan man 
+#' få ut partial standard deviations från en global modell med ostandardisera värden. Sedan kan man lägga på en ny modell
+#' med värden som är standardiserade baserat på partial standard deviations.
 
-View(datsc)
 ## ***************** ALLA FASER *********************####
 
-#' testar glmer. ska vara 3.Trots att Namn är random variable blir det för många frihetsgrader.
-#' boxcox() kan ändra responsvariabeln om min globala modell inte 
-#' uppfyller kraven för linjär regression. Instruktioner: https://www.r-bloggers.com/on-box-cox-transform-in-regression-models/
-#' Zuur et al 2010 rekommenderar dock inte att man ändrar responsvariabeln.
+# Plockar först ut de variabler jag behöver.
+pvars <- c("medelvärde_lämmelprediktion_uppgångsår",
+           "rödräv_densitet",
+           "area_myr","area_vatten", "distans_till_vatten", "distans_till_skog")
 
-#' tar 
-global.modell <- glmer(kull ~ Fas + medelvärde_lämmelprediktion_uppgångsår
-            + rödräv_densitet
-            + area_myr + area_vatten + distans_till_vatten
-            + distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
-          data = datsc) # det ska vara logit eftersom kull är binär data. När jag lägger till Namn som en random variabel fattar R att Namn är grupper
+full.fas.km <- dens.sub %>% 
+  dplyr::select(kull, Namn, År, Fas, pvars)
+
+
+full.fas.km.modell <- glmer(kull ~ Fas + medelvärde_lämmelprediktion_uppgångsår
+                      + rödräv_densitet
+                      + area_myr + area_vatten + distans_till_vatten
+                      + distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
+                      data = full.fas.km)
+
+#' Skalar om baserat på sample standard deviation. Ej rekommenderat av Cade 2015.
+# pvars <- c("medelvärde_lämmelprediktion_uppgångsår",
+#           "rödräv_densitet",
+#           "area_myr","area_vatten", "distans_till_vatten", "distans_till_skog")
+#datsc <- dens.sub
+#datsc[pvars] <- lapply(datsc[pvars],scale)
+
+# View(datsc)
+
+
+
+# global.modell <- glmer(kull ~ Fas + medelvärde_lämmelprediktion_uppgångsår
+#            + rödräv_densitet
+#            + area_myr + area_vatten + distans_till_vatten
+#            + distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
+#          data = datsc) # det ska vara logit eftersom kull är binär data. När jag lägger till Namn som en random variabel fattar R att Namn är grupper
 
 library(sjPlot)
-plot_model(global.modell, type = "slope")
-plot_model(global.modell, type = "diag") # qq-plot for kvantilerna för random effekt mot standard normalkvantiler
-plot_model(global.modell, type = "re")
-plot_model(global.modell, type = "resid" )
+plot_model(full.fas.modell.PSD, type = "slope")
+plot_model(full.fas.modell.PSD, type = "diag") # qq-plot for kvantilerna för random effekt mot standard normalkvantiler
+plot_model(full.fas.modell.PSD, type = "re")
+plot_model(full.fas.modell.PSD, type = "resid" )
 
 library(DHARMa)
 # # vignette för DHARMa https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html
-simulateResiduals(global.modell, plot = TRUE)
-sim.output<-simulateResiduals(global.modell)
+simulateResiduals(full.fas.modell.PSD, plot = TRUE)
+sim.output<-simulateResiduals(stdz.model)
 plot(sim.output, quantreg = FALSE)
 resid.fitted.plot<-plot(sim.output) #tar längre tid
 plotResiduals(datsc$rödräv_densitet , sim.output$scaledResiduals, quantreg = T) # några variabler har enskilt lite dålig fit. Rödräv och lämmel är bra
@@ -253,13 +269,13 @@ testUniformity(simulationOutput = sim.output) #Heteroscedasticity: när varianse
 testDispersion(sim.output)# testar både over och underdispersion
 
 #det är bäst att använda de här där man grupperar per lya
-sim.group<-recalculateResiduals(sim.output, group = datsc$Namn)
+sim.group<-recalculateResiduals(sim.output, group = full.fas.km$Namn)
 testDispersion(sim.group)
 testUniformity(sim.group)
 plot(sim.group, quantreg = FALSE)
 
 
-# tillbaka till analysen
+# Fortsatt analys med omskalning baserat på sample standard deviations
 summary(global.modell)
 #' Jag fick samma varning, men det funkar: This works, 
 #' although we get a warning message about a too-large gradient -- I think 
@@ -267,57 +283,109 @@ summary(global.modell)
 #' sensitivity thresholds right)
 
 library(arm)
-stdz.model <- standardize(global.modell, standardize.y = FALSE)
+stdz.model <- standardize(full.fas.km.modell, standardize.y = FALSE)
+summary(stdz.model)
 ## increases max gradient -- larger warning
 library(MuMIn)
 model.set <- dredge(stdz.model)  ## slow, but running ...
 
 
-summary(model.set)
-summary(model.avg(model.set, subset = delta < 6)) # skillnaden mellan modellen med lägst AIC och den modellen med högst AIC som väljs
-Weights(model.set)
-
 par(mfrow=c(1,1))
 par(mar = c(3,5,6,4))
 plot(model.set, labAsExpr = TRUE)
-m.ave<-model.avg(model.set, subset = delta < 2) 
+m.ave<-model.avg(model.set, subset = delta < 2) # skillnaden mellan modellen med lägst AIC och den modellen med högst AIC som väljs
+Weights(m.ave)
 summary(m.ave)
 
-#Den här modellen var bäst, men inte klart bäst
-best_model <- glmer(kull~ factor(Fas)+ area_myr + distans_till_skog + (1 | Namn), 
-                  na.action = "na.fail", family = binomial(link = 'logit'), data = datsc)
-plot(best_model) # plottar ej. Varför?
 
-#' Att använda 95% av vikterna är en alternativ metod för model inference. Harrison et al 2018 rekommenderar dock inte det
-#' eftersom modellerna blir för komplicerade med för många modeller med hög deltaAIC.
-confset.95p <- get.models(model.set, cumsum(weight) <= .95) # alla vikters summa som tas med ska vara 0.95. Alltså 95% sannolikhet för 
 
-avgmod.95p <- model.avg(confset.95p)
-summary(avgmod.95p)
-confint(avgmod.95p)
-warnings() # Alla varningar kan igoreras. Det är bara  too-large gradient (max grad)
 
-#Vet inte riktigt vad outputen nedan betyder
-# Force re-fitting the component models
-model.avg(d.modell, cumsum(weight) <= .95, fit = TRUE)
-# Models are also fitted if additional arguments are given
-model.avg(d.modell, cumsum(weight) <= .95, rank = "AIC")
 
-# plottar
+## skalar om med partial standard deviations, alla faser #### 
+
+#psd <- partial.sd(full.fas.km.modell)
+#psd
+#z.full.fas.km <- stdize(full.fas.km, scale = c(NA,NA,NA,NA, psd[-1]), center =  c(FALSE, FALSE,FALSE,FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE)) # centrerar till mean 0. NA, NA, NA och NA tar bort responsvariabeln, Namn, År och Fas. Samma för FALSE, FALSE, FALSE, FALSE. Kull och År ska inte ändras och Namn kan inte ändras. binary = "omit" fungerade inte.
+
+
+#full.fas.modell.PSD <- glmer(kull ~Fas + z.medelvärde_lämmelprediktion_uppgångsår
+#                             + z.rödräv_densitet
+#                             + z.area_myr + z.area_vatten + z.distans_till_vatten
+#                             + z.distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
+#                             data = z.full.fas.km)
+
+#class(z.full.fas.km$Fas)#fortfarande faktor
+
+#full.fas.set.unt.z <- dredge(full.fas.modell.PSD, beta = "none")
+#m.ave.km <- model.avg(full.fas.set.unt.z, subset = delta < 2)
+#summary(m.ave.km)
+#nrow(m.ave.km$msTable)
+
+## plottar alla faser ####
+
+# Tabell
 sumtable<-summary(m.ave)
 sumtable
 sumtable$importance
+
 imp<-as.data.frame(sumtable$importance)
 imp$`sumtable$importance` # ska kanske ha med det här med i plotten.
 imp<-stack(imp) # ger error men det fungerar
 imp<-round(imp, digits = 2) #avrundar
-rownames(imp) <- NULL #tar bort radnamnen
+imp$Parameters <- as.character(NA)
+imp$Parameters<-rownames(imp) # lägger radnamn som kolumn
+rownames(imp) <-NULL #tar bort radnamn
 class(imp$`sumtable$importance` ) #sparas som "importance" och "numeric". Vet inte vad importance är för klass
 imp$`sumtable$importance` <- as.numeric(imp$`sumtable$importance`)
 
+full.coefs<-as.data.frame(sumtable$coefmat.full)
+full.coefs$Parameters <- as.character(NA)
+full.coefs$Parameters<-rownames(full.coefs)
+rownames(full.coefs)<- NULL
+
+coefs.table <- full.coefs %>% 
+  dplyr::select(Parameters, Estimate, `Std. Error`) %>% 
+  dplyr::rename(`Unconditional SE` = `Std. Error`)
+
+coefs.table
+conf.int<-as.data.frame(confint(sumtable))
+conf.int$Parameters <- rownames(conf.int)
+rownames(conf.int) <- NULL
+conf.int$`2.5 %` <- round(conf.int$`2.5 %`, digits = 3)
+conf.int$`97.5 %` <- round(conf.int$`97.5 %`, digits = 3)
+conf.int <- conf.int %>% 
+  unite(`Confidence interval`,`2.5 %`, `97.5 %`, sep = ", ")
+conf.int
+
+coefs.table <-coefs.table %>% 
+  left_join(conf.int, by = "Parameters")
+
+coefs.table
+
+colnames(imp)[1] <- "Relative importance"
+imp$Parameters[1] <- "Faslow"
+
+coefs.table <- coefs.table %>% 
+  left_join(imp, by = "Parameters")
+
+coefs.table$`Relative importance`[coefs.table$Parameters == "Faspeak"] <- 1.00
+
+
+coefs.table$Parameters <- c("Intercept", "low phase", "peak phase", "area bogs", "distance to forest", "distance to water",
+                            "mean lemming probability", "area water", "red fox density")
+coefs.table <- coefs.table %>% 
+  arrange(desc(`Relative importance`))
+nrow(coefs.table) #9
+coefs.table <- coefs.table[c(9,1:8),] #flyttar interceptet till toppen. Hamnade i botten
+coefs.table$Estimate <- round(coefs.table$Estimate, digits = 3)
+coefs.table$`Unconditional SE` <- round(coefs.table$`Unconditional SE`, digits = 3)
+
+write_xlsx(coefs.table, path = "Den and territory selection/Plottar/tabell_alla_faser.xlsx")
+
+# figur
 imp <- paste0('r.i = ', imp$`sumtable$importance` ) # lägger till r.i =  framför alla relative importance värden. Outputen blir en vektor
 imp
-imp <- c("r.i = 1", "r.i = 1", "r.i = 1", "r.i = 0.73", "r.i = 0.53", "r.i = 0.45", "r.i = 0.25", "r.i = 0.05")
+imp <- c("r.i = 1", "r.i = 1", "r.i = 1", "r.i = 0.63", "r.i = 0.54", "r.i = 0.47", "r.i = 0.33", "r.i = 0.28") # faslow och faspeak får en gemensam relative importance. Måste lägga till en extra.
 imp
 coef<-as.data.frame(sumtable$coefmat.subset)
 ggdf<-as.data.frame(sumtable$coef.nmod)
@@ -364,42 +432,38 @@ g+theme(axis.text=element_text(size=15, color = "black"), # ändrar stapeltexten
 ggsave("ggdf.png", width = 35, height = 20, units = "cm") # sparar plotten i working directory
 
 #gör en tabell istället
-
+imp
 # blir konstig ordning så gör om
-impt <- c(1.00, 1.00, 1.00, 0.73, 0.53, 0.45, 0.25, 0.05)
+impt <- c(1.00, 1.00, 1.00, 0.63, 0.54, 0.47, 0.33, 0.28)
 sumtable
-pt <- c("5.5e-05", "<2e-16","9e-05","0.0855", "0.1919", "0.1293", "0.4364", "0.7463")
-
+pt <- c("5.5e-05", "<2e-16","0.0001","0.1020", "0.2031", "0.1324", "0.4274", "0.9117")
+Variables
+est.coef <- c("-1.1214", "1.6292", "1.2460", "-0.6301", "-0.4566", "0.4016", "-0.2360", "-0.0349")
 Variables <- c("low phase", "peak phase", "distance to forest","area bogs", "distance to water", "mean lemming probability",
                "area water", "red fox density")
-fas.tabell <-cbind(as.character(Variables), impt, pt)
+fas.tabell <-cbind(as.character(Variables), est.coef, impt, pt)
 fas.tabell
-colnames(fas.tabell) <- c("Variables", "relative importance", "p-value")
+colnames(fas.tabell) <- c("variables", "estimate coefficient", "relative importance", "p-value")
 fas.tabell
 
 ## Testar att lägga in År som en random effect eftersom jag mäter per år ####
-global.modell.år <- glmer(kull ~ Fas +  medelvärde_lämmelprediktion_uppgångsår
-                         + rödräv_densitet
-                          + area_myr + area_vatten + distans_till_vatten
-                          + distans_till_skog + (1 | Namn) + (1 | År), na.action = "na.fail", family = binomial(link = 'logit'), 
-                          data = datsc)
+global.modell.år <- glmer(kull ~ Fas +  z.medelvärde_lämmelprediktion_uppgångsår
+                         + z.rödräv_densitet
+                          + z.area_myr + z.area_vatten + z.distans_till_vatten
+                          + z.distans_till_skog + (1 | Namn) + (1 | År), na.action = "na.fail", family = binomial(link = 'logit'), 
+                          data = z.full.fas.km)
 
-stdz.model.år <- standardize(global.modell.år, standardize.y = FALSE)
-## increases max gradient -- larger warning
+
 library(MuMIn)
-model.set.år <- dredge(stdz.model.år)  ## slow, but running ...
+model.set.år <- dredge(global.modell.år)  ## slow, but running ...
 
-
-summary(model.set.år)
-summary(model.avg(model.set.år, subset = delta < 4)) # skillnaden mellan modellen med lägst AIC och den modellen med högst AIC som väljs
-Weights(model.set.år)
-
+car::vif(global.modell.år)
 par(mfrow=c(1,1))
 par(mar = c(3,5,6,4))
 plot(model.set.år, labAsExpr = TRUE)
-m.ave.år<-model.avg(model.set.år, subset = delta < 2) 
+m.ave.år<-model.avg(model.set.år, subset = delta < 6)
 summary(m.ave.år) # ingen större skillnad. Bara att lågår inte är signifikant längre. annars är bara distans till skog och peak signifikant, precis som innan.
-
+Weights(model.set.år)
 
 #' Fas är väldigt signifikant.
 #' Testar därför att analyser de tre faserna separat
@@ -427,10 +491,43 @@ fas.1.modell <- glmer(kull ~ medelvärde_lämmelprediktion_uppgångsår
                         + distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
                         data = fas.1.km)
 
+car::vif(fas.1.modell)
 
+# Skalar om med sample standard deviations. Ej rekommenderat av Cade.
+
+#Eftersom jag har kvadratkm och km i datat så behövs inte det här stycket. 
+#pvars <- c("medelvärde_lämmelprediktion_uppgångsår",
+#           "rödräv_densitet","area_myr",
+#           "area_vatten", "distans_till_vatten", "distans_till_skog")
+#datsc.1 <- fas.1
+#datsc.1[pvars] <- lapply(datsc.1[pvars],scale)
+#View(datsc.1)
+#fas.1.modellsc <- glmer(kull ~ medelvärde_lämmelprediktion_uppgångsår
+#                      + rödräv_densitet
+#                      + area_myr + area_vatten + distans_till_vatten
+#                      + distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
+#                      data = datsc.1)
+
+stdz.model.1 <- standardize(fas.1.modell, standardize.y = FALSE)
+summary(stdz.model.1)
+?scale
+?`standardize,merMod-method`
+fas.1.setsc <- dredge(stdz.model.1)
+
+nrow(fas.1.km) ## 420
+ncol(getME(fas.1.setsc,"X")) # 7, om det är mindre än 10 obs per variabel i AIC analysen är det för få. Jag har 420/7 = 60
+
+
+
+par(mar = c(3,5,6,4))
+plot(fas.1.setsc, labAsExpr = TRUE)
+ave.1sc<-model.avg(fas.1.setsc, subset = delta < 2) 
+summary(ave.1sc) 
+
+## Skalar om med partial SD fas 1 ####
 psd.1 <- partial.sd(fas.1.modell)
 
-z.fas.1.km <- stdize(fas.1.km, scale = c(NA,NA, psd.1[-1]), center = FALSE) # centrerar inte. NA och NA tar bort responsvariabeln och Namn. Kull ska inte ändras och Namn kan inte ändras.
+z.fas.1.km <- stdize(fas.1.km, scale = c(NA,NA, psd.1[-1]), center = c(FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE)) # centrerar till mean 0. NA och NA tar bort responsvariabeln och Namn. Samma för FALSE, FALSE. Kull ska inte ändras och Namn kan inte ändras) # centrerar till mean 0. NA och NA tar bort responsvariabeln och Namn. Samma för FALSE, FALSE. Kull ska inte ändras och Namn kan inte ändras
 head(z.fas.1.km)
 hist(z.fas.1.km$z.medelvärde_lämmelprediktion_uppgångsår) # de är inte helt unimodala. Outliers ställer till problem. Skiter nog i det.
 hist(z.fas.1.km$z.rödräv_densitet)
@@ -440,10 +537,10 @@ hist(z.fas.1.km$z.distans_till_vatten)
 hist(z.fas.1.km$z.distans_till_skog)
 
 fas.1.modell.PSD <- glmer(kull ~ z.medelvärde_lämmelprediktion_uppgångsår
-                      + z.rödräv_densitet
-                      + z.area_myr + z.area_vatten + z.distans_till_vatten
-                      + z.distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
-                      data = z.fas.1.km)
+                          + z.rödräv_densitet
+                          + z.area_myr + z.area_vatten + z.distans_till_vatten
+                          + z.distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
+                          data = z.fas.1.km)
 
 
 
@@ -452,45 +549,25 @@ fas.1.set.PSD <- dredge(fas.1.modell.PSD, beta = "partial.sd") # koefficienterna
 fas.1.set.unt <- dredge(fas.1.modell, beta = "none") #koefficienterna ej transformerade
 fas.1.set <- dredge(fas.1.modell, beta = "partial.sd") # koefficienterna transformeras baserat på partial standard deviations
 
-summary(model.avg(fas.1.set.unt.z, subset = delta < 6))
-summary(model.avg(fas.1.set.PSD, subset = delta < 2))
-summary(model.avg(fas.1.set.unt, subset = delta < 2)) #koefficienterna ej transformerade
+koef.norm<-summary(model.avg(fas.1.set.unt.z, subset = delta < 2)) #koefficienterna ej transformerade
+koef.psd<-summary(model.avg(fas.1.set.PSD, subset = delta < 2))
+summary(model.avg(fas.1.set.unt.z, subset = delta < 2)) #koefficienterna ej transformerade
 summary(model.avg(fas.1.set, subset = delta < 2))
+fas.1.set.unt.z
+# det blir ingen större skillnad på koefficienterna förutom på interceptet om man kör partial.sd med dredge.
+nrow(koef.norm$msTable)
+koef.norm$coefficients
+koef.psd$coefficients
+koef.norm
+koef.psd
 
-# Skalar om med sample standard deviations. Ej rekommenderat av Cade.
-pvars <- c("medelvärde_lämmelprediktion_uppgångsår",
-           "rödräv_densitet","area_myr",
-           "area_vatten", "distans_till_vatten", "distans_till_skog")
-datsc.1 <- fas.1
-datsc.1[pvars] <- lapply(datsc.1[pvars],scale)
-View(datsc.1)
-fas.1.modellsc <- glmer(kull ~ medelvärde_lämmelprediktion_uppgångsår
-                      + rödräv_densitet
-                      + area_myr + area_vatten + distans_till_vatten
-                      + distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
-                      data = datsc.1)
+## fas 1 plott ####
 
-stdz.model.1 <- standardize(fas.1.modellsc, standardize.y = FALSE)
-stdz.model.1
-?scale
-?`standardize,merMod-method`
-fas.1.setsc <- dredge(stdz.model.1)
+ave.1sc<-model.avg(ave.1sc, subset = delta < 2)
 
-nrow(datsc.1) ## 420
-ncol(getME(fas.1.modellsc,"X")) # 7, om det är mindre än 10 obs per variabel i AIC analysen är det för få. Jag har 420/7 = 60
-
-
-summary(model.avg(fas.1.setsc, subset = delta < 2))
-par(mar = c(3,5,6,4))
-plot(fas.1.setsc, labAsExpr = TRUE)
-summary(model.avg(fas.1.setsc, subset = delta < 6))
-ave.1sc<-model.avg(fas.1.setsc, subset = delta < 2) 
-summary(ave.1sc) # blir samma sak som den oskalade datan
-
-# plottar
 sumtable.1<-summary(ave.1sc)
+sumtable.1$importance
 sumtable.1
-
 imp1<-as.data.frame(sumtable.1$importance)
 imp1$`sumtable.1$importance` # ska kanske ha med det här med i plotten.
 imp1<-stack(imp1) # ger error men det fungerar
@@ -510,7 +587,7 @@ coefP1 <- coef1 %>%
   dplyr::select(`Pr(>|z|)`) %>% 
   slice(-1) # tar bort interceptet
 
-
+sumtable.1$coefmat.subset
 coefP1
 p1 <- round(coefP1$`Pr(>|z|)`, digits =3)#avrundar
 p1 <- paste0('p = ', p1) # lägger till p = framför alla p-värden
@@ -518,15 +595,15 @@ p1
 
 names(ggdf1)
 colnames(ggdf1) <- c("distance to forest","red fox density", "area bogs",
-                     "distance to water", "area water")
+                     "distance to water", "area water", "mean lemming probability")
                      
 
 ggdf1<-stack(ggdf1) # gör bred data lång
 colnames(ggdf1)<-c("Times_selected", "Variables")
 ggdf1
 
-
-
+sumtable.1
+# importance blev egentligen fel här med men de som var på olika plats hade samma värde (0.26)
 g<-ggplot(data=ggdf1, aes(x=Variables, y=Times_selected, fill=Times_selected)) +
   geom_bar(stat="identity", width=0.7)+
   geom_text(aes(label= p1), vjust=4, color="white", size = 7)+
@@ -558,11 +635,11 @@ fas.2.modell <- glmer(kull ~ medelvärde_lämmelprediktion_uppgångsår
                       + area_myr + area_vatten + distans_till_vatten
                       + distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
                       data = fas.2.km)
-
+car::vif(fas.2.modell)
 
 psd.2 <- partial.sd(fas.2.modell)
 
-z.fas.2.km <- stdize(fas.2.km, scale = c(NA,NA, psd.2[-1]), center = FALSE) # centrerar inte. NA och NA tar bort responsvariabeln och Namn. Kull ska inte ändras och Namn kan inte ändras.
+z.fas.2.km <- stdize(fas.2.km, scale = c(NA,NA, psd.2[-1]), center =  c(FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE)) # centrerar till mean 0. NA och NA tar bort responsvariabeln och Namn. Samma för FALSE, FALSE. Kull ska inte ändras och Namn kan inte ändras.
 
 
 fas.2.modell.PSD <- glmer(kull ~ z.medelvärde_lämmelprediktion_uppgångsår
@@ -574,8 +651,9 @@ fas.2.modell.PSD <- glmer(kull ~ z.medelvärde_lämmelprediktion_uppgångsår
 
 
 fas.2.set.unt.z <- dredge(fas.2.modell.PSD, beta = "none")
-summary(model.avg(fas.2.set.unt.z, subset = delta < 6))
-#skalar om
+summary(model.avg(fas.2.set.unt.z, subset = delta < 2))
+
+#skalar om med sample standard deviations. Ej rekommenderat av Cade
 pvars <- c("medelvärde_lämmelprediktion_uppgångsår",
            "rödräv_densitet",
            "hojd_over_havet","area_myr","area_vatten", "distans_till_vatten", "distans_till_skog")
@@ -636,19 +714,25 @@ plot(fas.2.set.mm, labAsExpr = TRUE)
 ave.2sc.mm<-model.avg(fas.2.set.mm, subset = delta < 2) 
 summary(ave.2sc.mm)
 
-# Gör en barplot
-sumtable.2<-summary(ave.2sc)
+## Fas 2 plott####
+ave.2psd<-model.avg(fas.2.set.unt.z, subset = delta < 6)
 
+sumtable.2<-summary(ave.2psd)
+
+sumtable.2
 
 imp2<-as.data.frame(sumtable.2$importance)
 imp2$`sumtable.2$importance` # ska kanske ha med det här med i plotten.
 imp2<-stack(imp2) # ger error men det fungerar
+imp2
 imp2<-round(imp2, digits = 2) #avrundar
 rownames(imp2) <- NULL
 class(imp2$`sumtable.2$importance` ) #sparas som "importance" och "numeric". Vet inte vad importance är för klass
+
 imp2$`sumtable.2$importance` <- as.numeric(imp2$`sumtable.2$importance`)
 
 imp2 <- paste0('r.i = ', imp2$`sumtable.2$importance` ) # lägger till r.i =  framför alla relative importance värden. Outputen blir en vektor
+sumtable.2$importance
 imp2
 coef2<-as.data.frame(sumtable.2$coefmat.subset)
 ggdf2<-as.data.frame(sumtable.2$coef.nmod)
@@ -659,20 +743,28 @@ coefP2 <- coef2 %>%
   dplyr::select(`Pr(>|z|)`) %>% 
   slice(-1) # tar bort interceptet
 
+sumtable.2$coefmat.subset
+
 
 coefP2
 p2 <- round(coefP2$`Pr(>|z|)`, digits =3)#avrundar
+
 p2 <- paste0('p = ', p2) # lägger till p = framför alla p-värden
 p2
-names(ggdf2)
+
+sumtable.2$coef.nmod
+
+ggdf2
+
 colnames(ggdf2) <- c("area bogs", "distance to forest","distance to water", "area water", "mean lemming probability",
                      "red fox density")
 
 ggdf2<-stack(ggdf2) # gör bred data lång
 colnames(ggdf2)<-c("Times_selected", "Variables")
 ggdf2
-
-
+p2
+# blev fel ordning på relative importance så matade in manuellt imp2 <-c("r.i = 0.83", "r.i = 1.00", "r.i = 0.32", "r.i = 0.32", "r.i = 0.37", "r.i = 0.28")
+sumtable.2
 g<-ggplot(data=ggdf2, aes(x=Variables, y=Times_selected, fill=Times_selected)) +
   geom_bar(stat="identity", width=0.7)+
   geom_text(aes(label= p2), vjust=5, color="white", size = 7)+
@@ -705,13 +797,13 @@ fas.3.modell <- glmer(kull ~ medelvärde_lämmelprediktion_uppgångsår
                       + area_myr + area_vatten + distans_till_vatten
                       + distans_till_skog + (1 | Namn), na.action = "na.fail", family = binomial(link = 'logit'), 
                       data = fas.3.km)
-
+car::vif(fas.3.modell)
 
 psd.3 <- partial.sd(fas.3.modell)
 
-z.fas.3.km <- stdize(fas.3.km, scale = c(NA,NA, psd.3[-1]), center = FALSE) # centrerar inte. NA och NA tar bort responsvariabeln och Namn. Kull ska inte ändras och Namn kan inte ändras.
-
-
+z.fas.3.km <- stdize(fas.3.km, scale = c(NA,NA, psd.3[-1]), center = c(FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE)) # centrerar inte. Överväg dock att göra det. NA och NA tar bort responsvariabeln och Namn. Kull ska inte ändras och Namn kan inte ändras.
+round((mean(z.fas.3.km$z.medelvärde_lämmelprediktion_uppgångsår) + mean(z.fas.3.km$z.rödräv_densitet) + mean(z.fas.3.km$z.area_myr) + mean(z.fas.3.km$z.area_vatten) + mean(z.fas.3.km$z.distans_till_vatten) + mean(z.fas.3.km$z.distans_till_skog))/6)
+View(z.fas.3.km)
 fas.3.modell.PSD <- glmer(kull ~ z.medelvärde_lämmelprediktion_uppgångsår
                           + z.rödräv_densitet
                           + z.area_myr + z.area_vatten + z.distans_till_vatten
@@ -721,9 +813,23 @@ fas.3.modell.PSD <- glmer(kull ~ z.medelvärde_lämmelprediktion_uppgångsår
 
 
 fas.3.set.unt.z <- dredge(fas.3.modell.PSD, beta = "none")
-summary(model.avg(fas.3.set.unt.z, subset = delta < 6))
+ave.3psd<-model.avg(fas.3.set.unt.z, subset = delta < 2)
+summary(ave.3psd)
+nrow(ave.3psd$msTable) #20 modeller
+?get.models
+confset.d4 <- get.models(fas.3.set.unt.z, subset = delta < 2)
+summary(model.avg(confset.d4)) #samma sak som summary(ave.3psd)
+summary(ave.3psd)
+confint(ave.3psd)
+confint(ave.3psd, full = TRUE) # conditional är default på alla de här funktionerna. Full= TRUE ger full average. 
 
-
+logLik(ave.3psd, full = TRUE)
+coefTable(ave.3psd, full = TRUE)
+vcov(ave.3psd, full = TRUE)
+ave.3psd$importance # ger importance baserat på Akaikevikter, inte på antal gånger den är med i de översta modellerna.
+lista <- rownames(coefTable(ave.3psd, full = TRUE)) # kom på ett sätt att plocka ut radnamnen så kan man lägga in dem i en vektor och sen kolumn.
+lista
+?model.avg
 #skalar om med sample standard deviations. Ej rekommenderat av Cade.
 pvars <- c("medelvärde_lämmelprediktion_uppgångsår",
            "rödräv_densitet",
@@ -740,17 +846,19 @@ fas.3.modell <- glmer(kull ~ medelvärde_lämmelprediktion_uppgångsår
 
 stdz.model.3 <- standardize(fas.3.modell, standardize.y = FALSE)
 ?standardize
-display(stdz.model.3)
-fas.3.set <- dredge(stdz.model.3)
+summary(stdz.model.3)
+fas.3.set <- dredge(stdz.model.3) # stora standard errors betyder att en eller flera modeller inte gick ihop (failed to converge)
 
-
+# plottar
 par(mar = c(3,5,6,4))
 plot(fas.3.set, labAsExpr = TRUE)
-summary(model.avg(fas.3.set, subset = delta < 6))
-ave.3sc<-model.avg(fas.3.set, subset = delta < 2) 
-sumtable.3<-summary(ave.3sc)
+su<-summary(model.avg(fas.3.set, subset = delta < 2))
+summary(su)                           # Std. Error är unconditional standard error eftersom revised.var = true är default i model.avg.
+ave.3psd<-model.avg(fas.3.set.unt.z, subset = delta < 2) 
+sumtable.3<-summary(ave.3psd)
 sumtable.3
-
+coefTable(sumtable.3, full = TRUE) #partial standardisering
+coefTable(su, full = TRUE) # vanlig standardisering
 imp3<-as.data.frame(sumtable.3$importance)
 imp3$`sumtable.3$importance` # ska kanske ha med det här med i plotten.
 imp3<-stack(imp3) # ger error men det fungerar
@@ -760,6 +868,7 @@ class(imp3$`sumtable.3$importance` ) #sparas som "importance" och "numeric". Vet
 imp3$`sumtable.3$importance` <- as.numeric(imp3$`sumtable.3$importance`)
 
 imp3 <- paste0('r.i = ', imp3$`sumtable.3$importance` ) # lägger till r.i =  framför alla relative importance värden. Outputen blir en vektor
+sumtable.3$importance
 imp3
 coef3<-as.data.frame(sumtable.3$coefmat.subset)
 ggdf3<-as.data.frame(sumtable.3$coef.nmod)
@@ -775,6 +884,8 @@ coefP3
 p3 <- round(coefP3$`Pr(>|z|)`, digits =4)#avrundar
 p3 <- paste0('p = ', p3) # lägger till p = framför alla p-värden
 p3
+sumtable.3$coefmat.subset
+names(ggdf3)
 colnames(ggdf3) <- c("distance to forest", "mean lemming probability", "distance to water", 
                     "area water","area bogs", "red fox density")
 
@@ -782,8 +893,9 @@ ggdf3<-stack(ggdf3) # gör bred data lång
 colnames(ggdf3)<-c("Times_selected", "Variables")
 ggdf3
 
-
-
+sumtable.3$importance
+sumtable.3
+# importance blev fel ordning här med. Matade in manuellt. imp3 <- c("r.i = 1", "r.i = 0.76", "r.i = 0.46 ", "r.i = 0.38", "r.i = 0.46", "r.i = 0.34") 
 g<-ggplot(data=ggdf3, aes(x=Variables, y=Times_selected, fill=Times_selected)) +
   geom_bar(stat="identity", width=0.7)+
   geom_text(aes(label= p3), vjust=4, color="white", size = 7)+

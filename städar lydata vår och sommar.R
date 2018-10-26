@@ -160,4 +160,24 @@ lyor.vars %>%
 
 write_xlsx(lyor.vars, path = "Den and territory selection/Data/lyvariabler.aic.xlsx")
 
+# gör en lång fil för alla år
 
+kärnlyor<-read_xlsx(path = "kärnlyor Helags AIC 2000 - 2018.xlsx")
+kärnlyor <- as.data.frame(kärnlyor)
+
+head(kärnlyor)
+kärnlyor.sub <- kärnlyor %>% 
+  dplyr::select(obsID, Namn,kull, År, Fas)
+
+head(kärnlyor.sub)
+
+head(lyor.vars)
+lydata.long <- kärnlyor.sub %>%
+  left_join(lyor.vars, by = "Namn")
+
+
+lydata.long <- lydata.long[complete.cases(lydata.long), ] # tar bort alla andra lyor. De raderna har NA och försvinner med det här kommandot
+
+View(lydata.long)
+#printar fil
+write_xlsx(lydata.long, path = "Den and territory selection/Data/lyvariabler.lång.aic.xlsx")

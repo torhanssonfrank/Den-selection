@@ -14,6 +14,7 @@ colnames(x) <- c("red fox density", "distance to forest", "distance to reproduct
                  "lemming variance", "altitude", "area bogs", "area water", "distance to water")
 pvars <- c("red fox density", "distance to forest", "distance to reproduction", "mean lemming density", 
            "lemming variance", "altitude", "area bogs", "area water", "distance to water")
+#testar skalade värden
 xsc <- x
 xsc[pvars] <- lapply(xsc[pvars],scale)
 res<-cor(xsc, method = c("pearson", "kendall", "spearman"))
@@ -77,3 +78,72 @@ namnkorr<-glmer(kull~ (1 | Namn), data = variabler, family = binomial)
 residout<-simulateResiduals(namnkorr)
 plot(residout, quantreg = FALSE, asFactor = TRUE) # qq-ploten tyder på att det är ett linjärt samband. Det räcker för att anta att Namn inte är oberoende.
 
+
+
+# korrelationsmatris för lydatan
+lydata.long <- read_xlsx(path = "Den and territory selection/Data/lyvariabler.lång.aic.xlsx")
+
+lydata.long<- as.data.frame(lydata.long)
+str(lydata.long)
+lydata.long$area <- as.numeric(lydata.long$area)
+lydata.long$snöfri.area <- as.numeric(lydata.long$snöfri.area)
+
+names(lydata.long)
+View(lydata.long)
+lydata.long <- lydata.long[!lydata.long$Namn == "FSZZ099", ] # tar bort 99:an. Kommer inte använda den.
+View(lydata.long)
+
+z <- lydata.long %>% 
+  dplyr::select(area, vinkel,öppning.v, öppning.s, m.temp.s,m.temp.v,m.snödjup, snöfri.area, uppskattat_antal_ripspillningshögar,
+                uppskattat_antal_ripor) %>% 
+  dplyr::rename(ripor = uppskattat_antal_ripor) %>% 
+  dplyr::rename(ripspillning = uppskattat_antal_ripspillningshögar)
+  
+
+library("Hmisc") # ger p-värden för korrelationsmatris
+res3 <- rcorr(as.matrix(z))
+res3
+res3$r
+res3$P
+
+
+library("corrplot")
+
+
+# Insignificant correlations display p-value (insig = "p-value")
+par(mfrow=c(1,1))
+corrplot(res3$r, method = "number", type="upper", order="hclust", 
+         p.mat = res3$P, sig.level = 0.05, insig = "pch" , tl.cex = 0.7,
+         title = "Variable Correlation matrix, Helags", 
+         mar = c(1,0,3,0), tl.col = "black",
+         tl.srt = 20)
+mtext("Insignificant correlations are crossed (p > 0.05)", side=3)
+
+#' tar bort marktermperatur sommar (den var så väderberoende ändå), öppningar sommar (väldigt korrelerad mer area).
+#' snöfri area  var korrelerad till 0.78 med ripspillning vilket antagligen bara var en slump.Kändes dock dumt att ta bort
+#' den eftersom det är det bästa snömåttet. Tog bort snödjup istället och fick ner VIF-värdena under
+#' tio i all fall. Tar även bort
+#' marktemperatur vår. Det blir för många parametrar annars. Vinkel, riktning, lyöppningar och snöfri.area mäter typ samma sak. 
+#' Överraskande nog är antalet sedda ripor på våren inte korrelerat med ripspillning på sommaren.
+
+z2<- z %>% 
+  dplyr::select(-m.temp.s, -öppning.s, -m.snödjup, -m.temp.v)
+res4 <- rcorr(as.matrix(z2))
+# Insignificant correlations display p-value (insig = "p-value")
+
+corrplot(res4$r, method = "number", type="upper", order="hclust", 
+         p.mat = res4$P, sig.level = 0.05, insig = "pch" , tl.cex = 0.7,
+         title = "Variable Correlation matrix, Helags", 
+         mar = c(1,0,3,0), tl.col = "black",
+         tl.srt = 20)
+mtext("Insignificant correlations are crossed (p > 0.05)", side=3)
+
+library(usdm)
+
+# VIF 
+
+class(z2)
+vif(z2)
+vifstep(z, th = 10) #vill inte ta bort area av lyan, som den här automatiserade varianten föreslår
+?vif
+ # jag behåller alltså vinkel, öppning.v, ripor, ripspillning, area, snöfri.area

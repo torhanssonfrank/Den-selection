@@ -1,0 +1,180 @@
+---
+title: "Markdown.test"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(knitr.table.format = "html")
+```
+VIF - värden
+```{r vif, echo=FALSE}
+
+library(readxl)
+library(kableExtra)
+library(knitr)
+tabley<-read_xlsx(path = "Den and territory selection/Plottar/tabell_VIF-värden_GISdata.xlsx")
+
+kable(tabley) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = F, position = "center") %>% 
+  add_header_above(c("Table 1. Variance inflation factor values for variables included in the global model" = length(tabley)))
+
+```
+
+Kullar per lya totalt samt kullar per fas per lya
+
+```{r print.table, echo = FALSE}
+litter.sorted.phase<-read_xlsx(path = "Den and territory selection/Plottar/kullar.totalt.per.lya.kärnlyor.xlsx") 
+
+options(knitr.kable.NA = '') # gör så NA inte skrivs ut i tabellen. Blir blanksteg istället
+
+kable(litter.sorted.phase) %>%
+  kable_styling(bootstrap_options = c("striped","condensed"), full_width = F, position = "center") %>% 
+  add_header_above(c("Table xx. Litters per den between 2000-2018 in Helags" = length(litter.sorted.phase)))
+```
+
+GIS-data, alla faser
+```{r, Coefficients all phases - GIS-data, echo=FALSE, message=FALSE}
+library(dplyr)
+library(readxl)
+coefs.table <- read_xlsx(path = "Den and territory selection/Plottar/tabell_alla_faser.xlsx") # nu funkar det. Man måste läsa in dataramen direkt i markdown. Man kan inte plocka den från environment
+library(knitr)
+library(kableExtra)
+
+options(knitr.kable.NA = '') # gör så NA inte skrivs ut i tabellen. Blir blanksteg istället
+kable(coefs.table) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = F, position = "center", font_size = 12) %>% 
+  add_header_above(c("Table 2. Summary results after model averaging GIS variables, all phases included" = length(coefs.table))) #anger hur många kolumner titeln ska ligga över
+  # save_kable(file = "coefs_all.docx", self_contained = T) funkar inte. Filen blir tom
+```
+Lydata och ripinventeringar, alla faser
+```{r, Coefficients all phases - Den and ptarmigan data, echo=FALSE}
+coefs.table.ly <- read_xlsx(path = "Den and territory selection/Plottar/tabell_alla_faser_lydata.xlsx") # nu funkar det. Man måste läsa in dataramen direkt i markdown. Man kan inte plocka den från environment
+library(knitr)
+library(kableExtra)
+
+options(knitr.kable.NA = '') # gör så NA inte skrivs ut i tabellen. Blir blanksteg istället
+kable(coefs.table.ly) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = F, position = "center") %>% 
+  add_header_above(c("Table xx" = length(coefs.table.ly)))
+```
+
+
+
+Lydata och ripinventeringar, lågfas
+
+
+```{r, Coefficients low phase - Den and ptarmigan data, echo = FALSE}
+# Lydata och ripinventeringar, lågfas
+coefs.table.ly.1 <- read_xlsx(path = "Den and territory selection/Plottar/tabell_lågfas_lydata.xlsx") # nu funkar det. Man måste läsa in dataramen direkt i markdown. Man kan inte plocka den från environment
+library(knitr)
+library(kableExtra)
+
+options(knitr.kable.NA = '') # gör så NA inte skrivs ut i tabellen. Blir blanksteg istället
+kable(coefs.table.ly.1) %>%
+  kable_styling(bootstrap_options = c("striped","hover", "condensed"), full_width = F, position = "center") 
+```
+Lydata och ripinventeringar, uppgångsfas
+
+```{r, Coefficients increase phase - Den and ptarmigan data, echo = FALSE}
+# Lydata och ripinventeringar, uppgångsfas
+coefs.table.ly.2 <- read_xlsx(path = "Den and territory selection/Plottar/tabell_uppgångsfas_lydata.xlsx") # nu funkar det. Man måste läsa in dataramen direkt i markdown. Man kan inte plocka den från environment
+library(knitr)
+library(kableExtra)
+
+options(knitr.kable.NA = '') # gör så NA inte skrivs ut i tabellen. Blir blanksteg istället
+kable(coefs.table.ly.2) %>%
+  kable_styling(bootstrap_options = c("striped","hover", "condensed"), full_width = F, position = "center") 
+```
+Lydata och ripinventeringar, toppfas
+
+```{r, Coefficients peak phase - Den and ptarmigan data, echo = FALSE}
+# Lydata och ripinventeringar, uppgångsfas
+coefs.table.ly.3 <- read_xlsx(path = "Den and territory selection/Plottar/tabell_toppfas_lydata.xlsx") # nu funkar det. Man måste läsa in dataramen direkt i markdown. Man kan inte plocka den från environment
+library(knitr)
+library(kableExtra)
+
+options(knitr.kable.NA = '') # gör så NA inte skrivs ut i tabellen. Blir blanksteg istället
+kable(coefs.table.ly.3) %>%
+  kable_styling(bootstrap_options = c("striped","hover", "condensed"), full_width = F, position = "center") 
+```
+Alla faser lydata och ripinventeringar i en tabell med fas som grupp
+
+
+
+
+```{r, grouped phases ptarmigan, echo = FALSE}
+library(dplyr)
+library(knitr)
+library(kableExtra)
+coefs.table.ly.1 <- read_xlsx(path = "Den and territory selection/Plottar/tabell_lågfas_lydata.xlsx")
+coefs.table.ly.2 <- read_xlsx(path = "Den and territory selection/Plottar/tabell_uppgångsfas_lydata.xlsx")
+coefs.table.ly.3 <- read_xlsx(path = "Den and territory selection/Plottar/tabell_toppfas_lydata.xlsx")
+
+coefs.table.ly.long <- coefs.table.ly.1 %>% 
+  bind_rows(coefs.table.ly.2) %>% 
+  bind_rows(coefs.table.ly.3)
+
+kable(coefs.table.ly.long) %>%
+  kable_styling(bootstrap_options = c("striped","condensed"), full_width = F) %>% 
+  group_rows("Low phase",1,5) %>% 
+  group_rows("Increase phase", 6,10) %>% 
+  group_rows("Peak phase", 11,15) %>%
+  add_header_above(c("Table xx" = length(coefs.table.ly.long)))
+  
+```
+Testar alla faser GIS-data som en tabell
+```{r, coefficients all phases gis, echo = FALSE}
+
+gis1<-read_xlsx(path = "Den and territory selection/Plottar/tabell_lågfas_GISdata.xlsx")
+gis2<-read_xlsx(path = "Den and territory selection/Plottar/tabell_uppgångsfas_GISdata.xlsx")
+gis3<-read_xlsx(path = "Den and territory selection/Plottar/tabell_toppfas_GISdata.xlsx")
+
+gisalla<-gis1 %>% 
+  left_join(gis2, by = "Parameters") %>% 
+  left_join(gis3, by = "Parameters")
+
+kable(gisalla) %>%
+  kable_styling(bootstrap_options = c("striped","hover", "condensed"), full_width = F, position = "center", font_size = 8) %>% 
+  add_header_above(c(" " = 1, "low phase" = 4, "increase phase" = 4, "peak phase" = 4)) %>% 
+  add_header_above(c("Table xx" = length(gisalla)))
+
+
+
+
+
+```
+faser i separata tabeller gisdata
+
+lågfas gis
+```{r, gisdata low phase, echo=FALSE}
+
+kable(gis1) %>%
+  kable_styling(bootstrap_options = c("striped","hover", "condensed"), full_width = F, position = "center") %>% 
+  add_header_above(c("Table xx" = length(gis1)))
+
+
+```
+
+uppgångsfas gis
+
+
+```{r, gisdata increase phase, echo = FALSE}
+
+
+kable(gis2) %>%
+  kable_styling(bootstrap_options = c("striped","hover", "condensed"), full_width = F, position = "center") %>% 
+  add_header_above(c("Table xx" = length(gis2)))
+```
+
+
+toppfas gis
+
+```{r, gisdata peak phase, echo = FALSE}
+
+
+kable(gis3) %>%
+  kable_styling(bootstrap_options = c("striped","hover", "condensed"), full_width = F, position = "center") %>% 
+  add_header_above(c("Table xx" = length(gis3)))
+```

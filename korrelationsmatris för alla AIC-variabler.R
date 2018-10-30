@@ -20,7 +20,7 @@ xsc[pvars] <- lapply(xsc[pvars],scale)
 res<-cor(xsc, method = c("pearson", "kendall", "spearman"))
 round(res, 2)
 library("Hmisc") # ger p-värden för korrelationsmatris
-res2 <- rcorr(as.matrix(xsc))
+res2 <- rcorr(as.matrix(x))
 res2
 res2$r
 res2$P
@@ -56,7 +56,7 @@ vif(x)
 #' höjd över havet eftersom så många andra parametrar korrelerar med den.
 
 #testar utan höjd över havet, lämmelvarians och distans till reproduktion
-y <- xsc %>%
+y <- x %>%
   dplyr::select(-altitude, -`lemming variance`, -`distance to reproduction`)
 res3 <- rcorr(as.matrix(y))
 corrplot(res3$r, method = "number", type="upper", order="hclust", 
@@ -66,10 +66,13 @@ corrplot(res3$r, method = "number", type="upper", order="hclust",
          tl.srt = 20)
 mtext("Insignificant correlations are crossed (p > 0.05)", side=3)
 
+library(usdm) # vif-värden för dataramar
 vif(y)
 tabley<-vif(y) # nu har mean lemming density låg VIF 
 
-?kable
+# printar en fil så att jag kan göra tabell i markdown
+write_xlsx(tabley, path = "Den and territory selection/Plottar/tabell_VIF-värden_GISdata.xlsx")
+
 class(variabler$Namn)
 variabler$Namn <- as.factor(variabler$Namn)
 plot(variabler$kull, variabler$Namn)

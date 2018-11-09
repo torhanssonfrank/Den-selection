@@ -8,24 +8,39 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 options(knitr.table.format = "html")
 ```
-VIF - värden
-```{r vif, echo=FALSE}
 
+tabell kartdata
+```{r, table mapdata, echo = FALSE}
 library(readxl)
 library(kableExtra)
 library(knitr)
-tabley<-read_xlsx(path = "Den and territory selection/Plottar/tabell_VIF-värden_GISdata.xlsx")
+options(knitr.kable.NA = '') # gör så NA inte skrivs ut i tabellen. Blir blanksteg istället
+karttabell<-read_xlsx(path = "GIS-data/tabell kartnamn i GIS-analysen.xlsx")
+kable(karttabell) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = F, position = "center") %>% 
+  add_header_above(c("Table 1. GIS - data used in analyses" = length(karttabell)))
+
+```
+
+
+VIF - värden
+
+Eftersom Markdownfilen ligger i Den and territory selection är det den mappen som blir working directory för markdown.
+```{r vif, echo=FALSE}
+
+
+tabley<-read_xlsx(path = "plottar/tabell_VIF-värden_GISdata.xlsx")
 
 kable(tabley) %>%
   kable_styling(bootstrap_options = c("striped", "condensed"), full_width = F, position = "center") %>% 
-  add_header_above(c("Table 1. Variance inflation factor values for variables included in the global model" = length(tabley)))
+  add_header_above(c("Table 2. Variance inflation factor (VIF) values for variables included in the global model" = length(tabley)))
 
 ```
 
 Kullar per lya totalt samt kullar per fas per lya
 
 ```{r print.table, echo = FALSE}
-litter.sorted.phase<-read_xlsx(path = "Den and territory selection/Plottar/kullar.totalt.per.lya.kärnlyor.xlsx") 
+litter.sorted.phase<-read_xlsx(path = "plottar/kullar.totalt.per.lya.kärnlyor.xlsx") 
 
 options(knitr.kable.NA = '') # gör så NA inte skrivs ut i tabellen. Blir blanksteg istället
 
@@ -38,7 +53,7 @@ GIS-data, alla faser
 ```{r, Coefficients all phases - GIS-data, echo=FALSE, message=FALSE}
 library(dplyr)
 library(readxl)
-coefs.table <- read_xlsx(path = "Den and territory selection/Plottar/tabell_alla_faser.xlsx") # nu funkar det. Man måste läsa in dataramen direkt i markdown. Man kan inte plocka den från environment
+coefs.table <- read_xlsx(path = "plottar/tabell_alla_faser.xlsx") # nu funkar det. Man måste läsa in dataramen direkt i markdown. Man kan inte plocka den från environment
 library(knitr)
 library(kableExtra)
 
@@ -48,9 +63,60 @@ kable(coefs.table) %>%
   add_header_above(c("Table 2. Summary results after model averaging GIS variables, all phases included" = length(coefs.table))) #anger hur många kolumner titeln ska ligga över
   # save_kable(file = "coefs_all.docx", self_contained = T) funkar inte. Filen blir tom
 ```
+Riptabell med distance samplingstatistik
+
+
+```{r, Ptarmigan distance sampling data, echo=FALSE}
+rip_table<-read_xlsx(path = "plottar/riptabell.estimat.stats.xlsx")
+kull <- read_xlsx(path = "plottar/kullar.totalt.per.lya.kärnlyor.xlsx") #lägger på en kolumn med kullar
+
+rip_table<-rip_table %>% 
+  left_join(kull, by = "Den code")
+ 
+rip_table[is.na(rip_table)] <-"0"
+rip_table$`Total litters`<-as.numeric(rip_table$`Total litters`)
+rip_table$`Total litters`[11]<-0
+rip_table$`Litters low phase`[11]<-NA
+rip_table$`Litters increase phase`[11]<-NA
+rip_table$`Litters peak phase`[11]<-NA
+rip_table <-rip_table %>% 
+  arrange(desc(`Total litters`))
+
+options(knitr.kable.NA = '') # gör så NA inte skrivs ut i tabellen. Blir blanksteg istället
+kable(rip_table) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = F, position = "center") %>% 
+  add_header_above(c("Table xx" = length(rip_table)))
+
+
+```
+
+Ripskittabell med distance samplingstatistik
+
+
+```{r, Ptarmigan droppings distance sampling data, echo = FALSE}
+skit_table<-read_xlsx(path = "plottar/skittabell.estimat.stats.xlsx")
+kull2 <- read_xlsx(path = "plottar/kullar.totalt.per.lya.kärnlyor.xlsx") #lägger på en kolumn med kullar
+
+skit_table<-skit_table %>% 
+  left_join(kull2, by = "Den code")
+ 
+skit_table[is.na(skit_table)] <-"0"
+skit_table$`Total litters`<-as.numeric(skit_table$`Total litters`)
+skit_table$`Total litters`[11]<-0
+skit_table$`Litters low phase`[11]<-NA
+skit_table$`Litters increase phase`[11]<-NA
+skit_table$`Litters peak phase`[11]<-NA
+skit_table <-skit_table %>% 
+  arrange(desc(`Total litters`))
+
+options(knitr.kable.NA = '') # gör så NA inte skrivs ut i tabellen. Blir blanksteg istället
+kable(skit_table) %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = F, position = "center") %>% 
+  add_header_above(c("Table xx" = length(skit_table)))
+```
 Lydata och ripinventeringar, alla faser
 ```{r, Coefficients all phases - Den and ptarmigan data, echo=FALSE}
-coefs.table.ly <- read_xlsx(path = "Den and territory selection/Plottar/tabell_alla_faser_lydata.xlsx") # nu funkar det. Man måste läsa in dataramen direkt i markdown. Man kan inte plocka den från environment
+coefs.table.ly <- read_xlsx(path = "plottar/tabell_alla_faser_lydata.xlsx") # nu funkar det. Man måste läsa in dataramen direkt i markdown. Man kan inte plocka den från environment
 library(knitr)
 library(kableExtra)
 
@@ -67,7 +133,7 @@ Lydata och ripinventeringar, lågfas
 
 ```{r, Coefficients low phase - Den and ptarmigan data, echo = FALSE}
 # Lydata och ripinventeringar, lågfas
-coefs.table.ly.1 <- read_xlsx(path = "Den and territory selection/Plottar/tabell_lågfas_lydata.xlsx") # nu funkar det. Man måste läsa in dataramen direkt i markdown. Man kan inte plocka den från environment
+coefs.table.ly.1 <- read_xlsx(path = "plottar/tabell_lågfas_lydata.xlsx") # nu funkar det. Man måste läsa in dataramen direkt i markdown. Man kan inte plocka den från environment
 library(knitr)
 library(kableExtra)
 
@@ -79,7 +145,7 @@ Lydata och ripinventeringar, uppgångsfas
 
 ```{r, Coefficients increase phase - Den and ptarmigan data, echo = FALSE}
 # Lydata och ripinventeringar, uppgångsfas
-coefs.table.ly.2 <- read_xlsx(path = "Den and territory selection/Plottar/tabell_uppgångsfas_lydata.xlsx") # nu funkar det. Man måste läsa in dataramen direkt i markdown. Man kan inte plocka den från environment
+coefs.table.ly.2 <- read_xlsx(path = "plottar/tabell_uppgångsfas_lydata.xlsx") # nu funkar det. Man måste läsa in dataramen direkt i markdown. Man kan inte plocka den från environment
 library(knitr)
 library(kableExtra)
 
@@ -91,7 +157,7 @@ Lydata och ripinventeringar, toppfas
 
 ```{r, Coefficients peak phase - Den and ptarmigan data, echo = FALSE}
 # Lydata och ripinventeringar, uppgångsfas
-coefs.table.ly.3 <- read_xlsx(path = "Den and territory selection/Plottar/tabell_toppfas_lydata.xlsx") # nu funkar det. Man måste läsa in dataramen direkt i markdown. Man kan inte plocka den från environment
+coefs.table.ly.3 <- read_xlsx(path = "plottar/tabell_toppfas_lydata.xlsx") # nu funkar det. Man måste läsa in dataramen direkt i markdown. Man kan inte plocka den från environment
 library(knitr)
 library(kableExtra)
 
@@ -108,9 +174,9 @@ Alla faser lydata och ripinventeringar i en tabell med fas som grupp
 library(dplyr)
 library(knitr)
 library(kableExtra)
-coefs.table.ly.1 <- read_xlsx(path = "Den and territory selection/Plottar/tabell_lågfas_lydata.xlsx")
-coefs.table.ly.2 <- read_xlsx(path = "Den and territory selection/Plottar/tabell_uppgångsfas_lydata.xlsx")
-coefs.table.ly.3 <- read_xlsx(path = "Den and territory selection/Plottar/tabell_toppfas_lydata.xlsx")
+coefs.table.ly.1 <- read_xlsx(path = "plottar/tabell_lågfas_lydata.xlsx")
+coefs.table.ly.2 <- read_xlsx(path = "plottar/tabell_uppgångsfas_lydata.xlsx")
+coefs.table.ly.3 <- read_xlsx(path = "plottar/tabell_toppfas_lydata.xlsx")
 
 coefs.table.ly.long <- coefs.table.ly.1 %>% 
   bind_rows(coefs.table.ly.2) %>% 
@@ -127,9 +193,9 @@ kable(coefs.table.ly.long) %>%
 Testar alla faser GIS-data som en tabell
 ```{r, coefficients all phases gis, echo = FALSE}
 
-gis1<-read_xlsx(path = "Den and territory selection/Plottar/tabell_lågfas_GISdata.xlsx")
-gis2<-read_xlsx(path = "Den and territory selection/Plottar/tabell_uppgångsfas_GISdata.xlsx")
-gis3<-read_xlsx(path = "Den and territory selection/Plottar/tabell_toppfas_GISdata.xlsx")
+gis1<-read_xlsx(path = "plottar/tabell_lågfas_GISdata.xlsx")
+gis2<-read_xlsx(path = "plottar/tabell_uppgångsfas_GISdata.xlsx")
+gis3<-read_xlsx(path = "plottar/tabell_toppfas_GISdata.xlsx")
 
 gisalla<-gis1 %>% 
   left_join(gis2, by = "Parameters") %>% 

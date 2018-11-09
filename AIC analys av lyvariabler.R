@@ -477,3 +477,109 @@ sumtable.ly.3$importance #stämmer
 confint(sumtable.ly.3, full = TRUE) # stämmer
 
 write_xlsx(coefs.table.ly.3, path = "Den and territory selection/Plottar/tabell_toppfas_lydata.xlsx")
+
+##plottar alla faser tillsammans ####
+plot.ly1<-read_xlsx(path = "Den and territory selection/Plottar/tabell_lågfas_lydata.xlsx")
+plot.ly2<-read_xlsx(path = "Den and territory selection/Plottar/tabell_uppgångsfas_lydata.xlsx")
+plot.ly3<-read_xlsx(path = "Den and territory selection/Plottar/tabell_toppfas_lydata.xlsx")
+
+
+plot.ly1<-plot.ly1 %>% 
+  slice(-1) # tar bort interceptet
+plot.ly1
+plot.ly1$Estimate <- paste0('Est. = ', plot.ly1$Estimate) # lägger till "Est. =" i början på alla rader
+plot.ly1$`Unconditional SE` <- paste0('U.SE = ', plot.ly1$`Unconditional SE`)
+plot.ly1$`Confidence interval` <- paste0('C.I = ', plot.ly1$`Confidence interval`)
+
+plot.ly2<-plot.ly2 %>% 
+  slice(-1) # tar bort interceptet
+plot.ly2
+plot.ly2$Estimate <- paste0('Est. = ', plot.ly2$Estimate) # lägger till "Est. =" i början på alla rader
+plot.ly2$`Unconditional SE` <- paste0('U.SE = ', plot.ly2$`Unconditional SE`)
+plot.ly2$`Confidence interval` <- paste0('C.I = ', plot.ly2$`Confidence interval`)
+
+plot.ly3<-plot.ly3 %>% 
+  slice(-1) # tar bort interceptet
+plot.ly3
+plot.ly3$Estimate <- paste0('Est. = ', plot.ly3$Estimate) # lägger till "Est. =" i början på alla rader
+plot.ly3$`Unconditional SE` <- paste0('U.SE = ', plot.ly3$`Unconditional SE`)
+plot.ly3$`Confidence interval` <- paste0('C.I = ', plot.ly3$`Confidence interval`)
+plot.ly3
+#fas1
+g1.ly<-ggplot(data=plot.ly1, aes(x=Parameters, y=`Relative importance`, fill=`Relative importance`)) +
+  scale_x_discrete(limits = plot.ly1$Parameters) + #säger år ggplot att hålla samma ordning på kolumnerna som i dataramen
+  geom_bar(stat="identity", width=0.9)+
+  geom_text(aes(label= plot.ly1$Estimate), vjust=-4, color="black", size = 6)+ #vjust är position i höjdled
+  geom_text(aes(label= plot.ly1$`Unconditional SE`), vjust=-2.5, color="black", size = 6)+
+  geom_text(aes(label= plot.ly1$`Confidence interval`), vjust=-1, color="black", size = 6)+
+  theme_minimal()
+
+
+g1.ly<-g1.ly+theme(axis.text=element_text(size=16, color = "black"), # ändrar stapeltextens storlek
+               axis.title.x=element_blank(), axis.title.y=element_blank())+ # tar bort axeltitlarna
+  annotate(geom = "label", x = 3, y = 0.85,
+           label = "Intercept\nEst. =   -3.52\nU.SE = 1.05\nC.I = -5.612, -1.433", # geom = "label" gör en ruta runt texten. geom = "text" ger bara text utan ruta. \n betyder ny rad.
+           hjust = 0, size = 6) + # vänsterjusterar texten i boxen
+  coord_cartesian(ylim=c(0, 1.35))+ # sätter plottens zoom. Jag vill ha utrymme ovanför staplarna så att texten får plats
+  scale_y_continuous(breaks=seq(0, 1, 0.2)) + # sätter min och maxvärdena för vad som ska visas på y-axeln (inte datat, bara axeln). 0.2 är intervallet. 
+  guides(fill=FALSE) # tar bort färgstapeln till höger
+g1.ly
+
+#fas2
+plot.ly2
+g2.ly<-ggplot(data=plot.ly2, aes(x=Parameters, y=`Relative importance`, fill=`Relative importance`)) +
+  scale_x_discrete(limits = plot.ly2$Parameters) + #säger år ggplot att hålla samma ordning på kolumnerna som i dataramen
+  geom_bar(stat="identity", width=0.9)+
+  geom_text(aes(label= plot.ly2$Estimate), vjust=-4, color="black", size = 6)+
+  geom_text(aes(label= plot.ly2$`Unconditional SE`), vjust=-2.5, color="black", size = 6)+
+  geom_text(aes(label= plot.ly2$`Confidence interval`), vjust=-1, color="black", size = 6)+
+  theme_minimal()
+
+g2.ly<-g2.ly+theme(axis.text=element_text(size=16, color = "black"), # ändrar stapeltextens storlek
+               axis.title.x=element_blank(), axis.title.y=element_blank())+ # tar bort axeltitlarna
+  annotate(geom = "label", x = 3, y = 0.85,
+           label = "Intercept\nEst. = --2.87\nU.SE =  1.19\nC.I =  -5.239, -0.498", # geom = "label" gör en ruta runt texten. geom = "text" ger bara text utan ruta. \n betyder ny rad.
+           hjust = 0, size = 6) + # vänsterjusterar texten
+  coord_cartesian(ylim=c(0, 1.35))+ # sätter plottens zoom. Jag vill ha utrymme ovanför staplarna så att texten får plats
+  scale_y_continuous(breaks=seq(0, 1, 0.2))+ # sätter min och maxvärdena för vad som ska visas på y-axeln (inte datat, bara axeln). 0.2 är intervallet. 
+  guides(fill=FALSE) # tar bort färgstapeln till höger
+
+g2.ly
+
+#fas 3
+plot.ly3
+g3.ly<-ggplot(data=plot.ly3, aes(x=Parameters, y=`Relative importance`, fill=`Relative importance`)) +
+  scale_x_discrete(limits = plot.ly3$Parameters) + #säger år ggplot att hålla samma ordning på kolumnerna som i dataramen
+  geom_bar(stat="identity", width=0.9)+
+  geom_text(aes(label= plot.ly3$Estimate), vjust=-4, color="black", size = 6)+
+  geom_text(aes(label= plot.ly3$`Unconditional SE`), vjust=-2.5, color="black", size = 6)+
+  geom_text(aes(label= plot.ly3$`Confidence interval`), vjust=-1, color="black", size = 6)+
+  theme_minimal()
+
+g3.ly<-g3.ly+theme(axis.text=element_text(size=16, color = "black"), # ändrar stapeltextens storlek
+               axis.title.x=element_blank(), axis.title.y=element_blank())+ # tar bort axeltitlarna
+  annotate(geom = "label", x = 3, y = 0.85,
+           label = "Intercept\nEst. = -0.81\nU.SE =  0.495 \nC.I =  -1.806, 0.185 ", # geom = "label" gör en ruta runt texten. geom = "text" ger bara text utan ruta. \n betyder ny rad.
+           hjust = 0, size = 6) + # vänsterjusterar texten
+  coord_cartesian(ylim=c(0, 1.30))+ # sätter plottens zoom. Jag vill ha utrymme ovanför staplarna så att texten får plats
+  scale_y_continuous(breaks=seq(0, 1, 0.2)) +  # sätter min och maxvärdena för vad som ska visas på y-axeln (inte datat, bara axeln). 0.2 är intervallet. 
+  guides(fill=FALSE) # tar bort färgstapeln till höger
+g3.ly
+
+
+# lägg ihop
+theme_set(theme_pubr())
+comboplot.lya <- ggarrange(g1.ly, g2.ly, g3.ly,
+                       labels = c("low phase", "increase phase", "peak phase"),
+                       font.label = list(size = 17, color = "black", face = "bold"),
+                       ncol = 1, nrow = 3)
+comboplot.lya
+comboplot.lya<-annotate_figure(comboplot.lya,
+                                bottom = text_grob("Parameters in selected models",
+                                                   face = "bold", size = 20),
+                                left = text_grob("Relative importance", 
+                                                 face = "bold", rot = 90, size = 20))
+?ggarrange              
+comboplot.lya             
+ggexport(comboplot.lya, filename = "comboplot.lya.jpeg", width = 6100, height = 7500, res = 400)
+?ggexport

@@ -50,7 +50,8 @@ library(unmarked) # Används i instruktionerna från Rasmus . gör också model 
 library('devtools')
 library(visreg)
 library(sjPlot) # diagnostic plots for linear models
-
+library(arm)
+library(car)
 update.packages(ask = FALSE) #flyttade över paketen från mappen för den äldre R-versionen till den nya, sen uppdatera. Se här https://stackoverflow.com/questions/13656699/update-r-using-rstudio
 
 
@@ -374,69 +375,7 @@ confint(sumtable, full = TRUE) #stämmer
 
 write_xlsx(coefs.table, path = "Den and territory selection/Plottar/tabell_alla_faser.xlsx")
 
-# figur
-imp <- paste0('r.i = ', imp$`sumtable$importance` ) # lägger till r.i =  framför alla relative importance värden. Outputen blir en vektor
-imp
-imp <- c("r.i = 1", "r.i = 1", "r.i = 1", "r.i = 0.63", "r.i = 0.54", "r.i = 0.47", "r.i = 0.33", "r.i = 0.28") # faslow och faspeak får en gemensam relative importance. Måste lägga till en extra.
-imp
-coef<-as.data.frame(sumtable$coefmat.full)
-ggdf<-as.data.frame(sumtable$coef.nmod)
-ggdf<-ggdf %>% 
-  dplyr::select(-`(Intercept)`)
-
-coefP <- coef %>%
-  dplyr::select(`Pr(>|z|)`) %>% 
-  slice(-1) # tar bort interceptet
-
-
-coefP
-p <- round(coefP$`Pr(>|z|)`, digits =5)#avrundar
-
-p <- paste0('p = ', p) # lägger till p = framför alla p-värden
-p[2]<-"p = < 2e-16" # för liten, blev 0. lägger in den manuellt
-p
-names(ggdf)
-
-colnames(ggdf) <- c("low phase", "peak phase","area bogs", "distance to forest", "distance to water",
-                     "mean lemming density", "area water", "red fox density")
-                      
-
-
-ggdf<-stack(ggdf) # gör bred data lång
-colnames(ggdf)<-c("Times_selected", "Variables")
-ggdf<-ggdf %>%
-  arrange(desc(Times_selected))
-
-
-#' blir ändå fel ordning på staplarna även fast jag sorterat med dplyr.
-#' VARNING! P-värdena är i fel ordning
-g <- ggplot(data=ggdf, aes(x=Variables, y=Times_selected, fill=Times_selected)) +
-  geom_bar(stat="identity", width=0.7)+
-  geom_text(aes(label= p), vjust=4, color="white", size = 7)+
-  geom_text(aes(label= imp), vjust=2, color="white", size = 7)+
-  labs(x = "Variables in selected models")+
-  labs(y = "Number of times selected in best models")+
-  theme_minimal()
-
-g+theme(axis.text=element_text(size=15, color = "black"), # ändrar stapeltextens storlek
-        axis.title=element_text(size=17,face="bold")) # ändrar axeltitlarnas storlek
-
-ggsave("ggdf.png", width = 35, height = 20, units = "cm") # sparar plotten i working directory
-
-#gör en tabell istället
-imp
-# blir konstig ordning så gör om
-impt <- c(1.00, 1.00, 1.00, 0.63, 0.54, 0.47, 0.33, 0.28)
-sumtable
-pt <- c("5.5e-05", "<2e-16","0.0001","0.1020", "0.2031", "0.1324", "0.4274", "0.9117")
-Variables
-est.coef <- c("-1.1214", "1.6292", "1.2460", "-0.6301", "-0.4566", "0.4016", "-0.2360", "-0.0349")
-Variables <- c("low phase", "peak phase", "distance to forest","area bogs", "distance to water", "mean lemming probability",
-               "area water", "red fox density")
-fas.tabell <-cbind(as.character(Variables), est.coef, impt, pt)
-fas.tabell
-colnames(fas.tabell) <- c("variables", "estimate coefficient", "relative importance", "p-value")
-fas.tabell
+## figur alla faser, har ingen än ####
 
 ## Testar att lägga in År som en random effect eftersom jag mäter per år ####
 global.modell.år <- glmer(kull ~ Fas +  z.medelvärde_lämmelprediktion_uppgångsår
@@ -619,7 +558,7 @@ plot.df1$`Confidence interval` <- paste0('C.I = ', plot.df1$`Confidence interval
 plot.df1
 # importance blev egentligen fel här med men de som var på olika plats hade samma värde (0.26)
 ?ggplot
-g<-ggplot(data=plot.df1, aes(x=Parameters, y=`Relative importance`, fill=`Relative importance`)) +
+g1<-ggplot(data=plot.df1, aes(x=Parameters, y=`Relative importance`, fill=`Relative importance`)) +
   scale_x_discrete(limits = plot.df1$Parameters) + #säger år ggplot att hålla samma ordning på kolumnerna som i dataramen
   geom_bar(stat="identity", width=0.9)+
   geom_text(aes(label= plot.df1$Estimate), vjust=-6, color="black", size = 5.5)+ #vjust är position i höjdled
@@ -630,15 +569,15 @@ g<-ggplot(data=plot.df1, aes(x=Parameters, y=`Relative importance`, fill=`Relati
   theme_minimal()
   
 
-g+theme(axis.text=element_text(size=15, color = "black"), # ändrar stapeltextens storlek
+g1<-g1+theme(axis.text=element_text(size=15, color = "black"), # ändrar stapeltextens storlek
         axis.title=element_text(size=17,face="bold"))+ # ändrar axeltitlarnas storlek
-  annotate(geom = "label", x = 4, y = 0.75,
+  annotate(geom = "label", x = 4, y = 0.85,
            label = "Intercept\nEst. = -4.406\nU.SE = 0.728\nC.I = -5.836, -2.975", # geom = "label" gör en ruta runt texten. geom = "text" ger bara text utan ruta. \n betyder ny rad.
            hjust = 0, size = 5.5) + # vänsterjusterar texten i boxen
   coord_cartesian(ylim=c(0, 1.25))+ # sätter plottens zoom. Jag vill ha utrymme ovanför staplarna så att texten får plats
-  scale_y_continuous(breaks=seq(0, 1, 0.2)) # sätter min och maxvärdena för vad som ska visas på y-axeln (inte datat, bara axeln). 0.2 är intervallet. 
-  
-
+  scale_y_continuous(breaks=seq(0, 1, 0.2)) + # sätter min och maxvärdena för vad som ska visas på y-axeln (inte datat, bara axeln). 0.2 är intervallet. 
+  guides(fill=FALSE) # tar bort färgstapeln till höger
+g1
 coefs.table.1
   
 
@@ -653,7 +592,7 @@ length(fas.2$obsID) # om det är mindre än 10 obs per variabel i AIC analysen �
 
 
 
-car::vif(fas.2.modell)
+
 
 
 
@@ -826,25 +765,25 @@ plot.df2$`Confidence interval` <- paste0('C.I = ', plot.df2$`Confidence interval
 plot.df2
 # importance blev egentligen fel här med men de som var på olika plats hade samma värde (0.26)
 ?ggplot
-g<-ggplot(data=plot.df2, aes(x=Parameters, y=`Relative importance`, fill=`Relative importance`)) +
+g2<-ggplot(data=plot.df2, aes(x=Parameters, y=`Relative importance`, fill=`Relative importance`)) +
   scale_x_discrete(limits = plot.df2$Parameters) + #säger år ggplot att hålla samma ordning på kolumnerna som i dataramen
   geom_bar(stat="identity", width=0.9)+
   geom_text(aes(label= plot.df2$Estimate), vjust=-6, color="black", size = 5)+
   geom_text(aes(label= plot.df2$`Unconditional SE`), vjust=-4, color="black", size = 5)+
   geom_text(aes(label= plot.df2$`Confidence interval`), vjust=-2, color="black", size = 5)+
-  labs(x = "Parameters in selected models, lemming low phase")+
+  labs(x = "Parameters in selected models, lemming increase phase")+
   labs(y = "Relative importance")+
   theme_minimal()
 
-g+theme(axis.text=element_text(size=14, color = "black"), # ändrar stapeltextens storlek
+g2<-g2+theme(axis.text=element_text(size=14, color = "black"), # ändrar stapeltextens storlek
         axis.title=element_text(size=17,face="bold"))+ # ändrar axeltitlarnas storlek
-  annotate(geom = "label", x = 4, y = 0.75,
+  annotate(geom = "label", x = 4, y = 0.85,
            label = "Intercept\nEst. = -3.029\nU.SE =  0.433\nC.I =  -3.881, -2.177", # geom = "label" gör en ruta runt texten. geom = "text" ger bara text utan ruta. \n betyder ny rad.
            hjust = 0, size = 5.5) + # vänsterjusterar texten
 coord_cartesian(ylim=c(0, 1.25))+ # sätter plottens zoom. Jag vill ha utrymme ovanför staplarna så att texten får plats
-  scale_y_continuous(breaks=seq(0, 1, 0.2)) # sätter min och maxvärdena för vad som ska visas på y-axeln (inte datat, bara axeln). 0.2 är intervallet. 
-
-
+  scale_y_continuous(breaks=seq(0, 1, 0.2))+ # sätter min och maxvärdena för vad som ska visas på y-axeln (inte datat, bara axeln). 0.2 är intervallet. 
+  guides(fill=FALSE) # tar bort färgstapeln till höger
+g2
 ggsave("importance.plot.fas2.gis.png", width = 35, height = 20, units = "cm") # sparar plotten i working directory
 
 
@@ -1003,25 +942,26 @@ plot.df3$`Confidence interval` <- paste0('C.I = ', plot.df3$`Confidence interval
 
 plot.df3
 
-?ggplot
-g<-ggplot(data=plot.df3, aes(x=Parameters, y=`Relative importance`, fill=`Relative importance`)) +
+?fill
+g3<-ggplot(data=plot.df3, aes(x=Parameters, y=`Relative importance`, fill=`Relative importance`)) +
   scale_x_discrete(limits = plot.df3$Parameters) + #säger år ggplot att hålla samma ordning på kolumnerna som i dataramen
   geom_bar(stat="identity", width=0.9)+
   geom_text(aes(label= plot.df3$Estimate), vjust=-6, color="black", size = 5.5)+
   geom_text(aes(label= plot.df3$`Unconditional SE`), vjust=-4, color="black", size = 5.5)+
   geom_text(aes(label= plot.df3$`Confidence interval`), vjust=-2, color="black", size = 5.5)+
-  labs(x = "Parameters in selected models, lemming low phase")+
+  labs(x = "Parameters in selected models, lemming peak phase")+
   labs(y = "Relative importance")+
   theme_minimal()
 
-g+theme(axis.text=element_text(size=13, color = "black"), # ändrar stapeltextens storlek
+g3<-g3+theme(axis.text=element_text(size=13, color = "black"), # ändrar stapeltextens storlek
         axis.title=element_text(size=17,face="bold"))+ # ändrar axeltitlarnas storlek
-  annotate(geom = "label", x = 4, y = 0.75,
+  annotate(geom = "label", x = 4, y = 0.85,
            label = "Intercept\nEst. = -1.287\nU.SE =  0.270\nC.I =  -1.820, -0.755", # geom = "label" gör en ruta runt texten. geom = "text" ger bara text utan ruta. \n betyder ny rad.
            hjust = 0, size = 5.5) + # vänsterjusterar texten
   coord_cartesian(ylim=c(0, 1.25))+ # sätter plottens zoom. Jag vill ha utrymme ovanför staplarna så att texten får plats
-  scale_y_continuous(breaks=seq(0, 1, 0.2)) # sätter min och maxvärdena för vad som ska visas på y-axeln (inte datat, bara axeln). 0.2 är intervallet. 
-
+  scale_y_continuous(breaks=seq(0, 1, 0.2)) +  # sätter min och maxvärdena för vad som ska visas på y-axeln (inte datat, bara axeln). 0.2 är intervallet. 
+  guides(fill=FALSE) # tar bort färgstapeln till höger
+g3
 coefs.table.3
 
 ggsave("importance.plot.fas3.gis.png", width = 35, height = 25, units = "cm") # sparar plotten i working directory
@@ -1243,9 +1183,194 @@ library(janitor)
 litter.sorted.phase<-litter.sorted.phase %>%
   adorn_totals("row")
 
+#räknar ut medelvärdet för antal kullar per år
+m.kull<-dens.sub %>%
+  group_by(År) %>%
+  summarise(m.kull = sum(kull)) %>% 
+  summarise(medel = mean(m.kull))
+m.kull
+
+# Räknar ut medelvärdet per år per fas
+m.fas.år<-dens.sub %>% 
+  group_by(Fas, År) %>% 
+  summarise(kull.år = sum(kull)) %>% 
+  group_by(Fas) %>% 
+  summarise(m.kull.fas.år = mean(kull.år))
+  
+#Ändrar om ordningen
+m.fas.år<-m.fas.år%>% 
+  spread(Fas, m.kull.fas.år)
+
+# med add column kan lägga till en kolumn på den plats man vill ha den direkt
+m.fas.år<-add_column(m.fas.år, `Den code` = "Mean per year", .before = "increase")
+
+# kom på senare att det här nog inte behövs för bind_rows
+m.fas.år<-m.fas.år %>% 
+  dplyr::rename(`Litters increase phase` = increase) %>% 
+  dplyr::rename(`Litters low phase` = low) %>% 
+  dplyr::rename(`Litters peak phase` = peak)
+m.fas.år[2:4]<-round(m.fas.år[2:4], digits = 1)
+
+
+#ändrar ordning
+m.fas.år %>% 
+  dplyr::select(`Den code`, `Litters low phase`, `Litters increase phase`, `Litters peak phase`)
+
+
+class(litter.sorted.phase)
+litter.sorted.phase<-as.data.frame(litter.sorted.phase)
+
+
+str(litter.sorted.phase)
+str(litter.test)
+
+litter.sorted.phase<-litter.sorted.phase %>% 
+  mutate_all(as.character) # måste även göra om den här till character så att jag slipper alla 0-decimaler på mina integers. Vill bara ha decimaler på medelvärdena
+
+m.fas.år<-m.fas.år %>% 
+  mutate_all(as.character) # gör även om den här till character så att de går att smacka ihop
+str(m.fas.år)
+View(litter.sorted.phase)
+#smackar ihop
+litter.sorted.phase<-litter.sorted.phase %>% 
+  bind_rows(m.fas.år)
+
+litter.sorted.phase$`Total litters`[37] <- "9.8" # lägger till medelvärdet för kullar per år
+
+# Ändrar om ordningen på raderna. Enkelt med dplyr::select
+litter.sorted.phase<-litter.sorted.phase %>% 
+  dplyr::select(`Den code`, `Litters low phase`, `Litters increase phase`, 
+                `Litters peak phase`, `Total litters`)
+
 View(litter.sorted.phase)
 
+
+
 write_xlsx(litter.sorted.phase, path = "Den and territory selection/Plottar/kullar.totalt.per.lya.kärnlyor.xlsx")
+
+## tar medelvärde för avstånd till trädgräns totalt och för faser ####
+
+# alla faser
+dens.sub %>% 
+  filter(kull ==1)%>% 
+  mutate(m.dist.forest = mean(distans_till_skog)) # 7261.602 meter
+fas.1%>%
+  filter(kull ==1)%>% 
+  mutate(m.dist.forest = mean(distans_till_skog)) #7512.803 meter
+
+fas.2 %>% 
+  filter(kull ==1)%>% 
+  mutate(m.dist.forest = mean(distans_till_skog)) # 7258.852 meter
+
+fas.3 %>% 
+  filter(kull ==1)%>% 
+  mutate(m.dist.forest = mean(distans_till_skog)) #7187.465 meter
+
+dist.skog.1 <-fas.1%>%
+  filter(kull ==1)%>%
+  dplyr::select(distans_till_skog)
+
+dist.skog.3 <-fas.3%>%
+  filter(kull ==1)%>%
+  dplyr::select(distans_till_skog)
+
+t.test(dist.skog.1, dist.skog.3) # ej signifikant
+
+#' kollar medelavstånd till skog för lyorna som bara hade kull under toppår
+#' plockade ut de lyorna i en dataram längre upp (only.peak)
+
+fas.3 %>% 
+  filter(Namn %in% only.peak)%>% 
+  mutate(m.dist.forest = mean(distans_till_skog)) # 5209.267 meter
+
+## testar lägga ihop figurerna i en plott ####
+library(ggplot2)
+library(ggpubr)
+
+plot.df1$Parameters <- c("distance to forest", "red fox density", "area bogs", "distance to water", "area water")
+plot.df2$Parameters <-c("area bogs", "distance to forest", "distance to water", "area water", "lemming density", 
+                        "red fox density")
+plot.df2
+plot.df3
+plot.df3$Parameters <- c("distance to forest", "lemming density", "distance to water", "area water", "area bogs", "red fox density")
+#fas1
+g1c<-ggplot(data=plot.df1, aes(x=Parameters, y=`Relative importance`, fill=`Relative importance`)) +
+  scale_x_discrete(limits = plot.df1$Parameters) + #säger år ggplot att hålla samma ordning på kolumnerna som i dataramen
+  geom_bar(stat="identity", width=0.9)+
+  geom_text(aes(label= plot.df1$Estimate), vjust=-4, color="black", size = 6)+ #vjust är position i höjdled
+  geom_text(aes(label= plot.df1$`Unconditional SE`), vjust=-2.5, color="black", size = 6)+
+  geom_text(aes(label= plot.df1$`Confidence interval`), vjust=-1, color="black", size = 6)+
+  theme_minimal()
+
+
+g1c<-g1c+theme(axis.text=element_text(size=16, color = "black"), # ändrar stapeltextens storlek
+               axis.title.x=element_blank(), axis.title.y=element_blank())+ # tar bort axeltitlarna
+  annotate(geom = "label", x = 3.5, y = 0.85,
+           label = "Intercept\nEst. = -4.406\nU.SE = 0.728\nC.I = -5.836, -2.975", # geom = "label" gör en ruta runt texten. geom = "text" ger bara text utan ruta. \n betyder ny rad.
+           hjust = 0, size = 6) + # vänsterjusterar texten i boxen
+  coord_cartesian(ylim=c(0, 1.35))+ # sätter plottens zoom. Jag vill ha utrymme ovanför staplarna så att texten får plats
+  scale_y_continuous(breaks=seq(0, 1, 0.2)) + # sätter min och maxvärdena för vad som ska visas på y-axeln (inte datat, bara axeln). 0.2 är intervallet. 
+  guides(fill=FALSE) # tar bort färgstapeln till höger
+g1c
+
+#fas2
+
+g2c<-ggplot(data=plot.df2, aes(x=Parameters, y=`Relative importance`, fill=`Relative importance`)) +
+  scale_x_discrete(limits = plot.df2$Parameters) + #säger år ggplot att hålla samma ordning på kolumnerna som i dataramen
+  geom_bar(stat="identity", width=0.9)+
+  geom_text(aes(label= plot.df2$Estimate), vjust=-4, color="black", size = 6)+
+  geom_text(aes(label= plot.df2$`Unconditional SE`), vjust=-2.5, color="black", size = 6)+
+  geom_text(aes(label= plot.df2$`Confidence interval`), vjust=-1, color="black", size = 6)+
+  theme_minimal()
+
+g2c<-g2c+theme(axis.text=element_text(size=16, color = "black"), # ändrar stapeltextens storlek
+               axis.title.x=element_blank(), axis.title.y=element_blank())+ # tar bort axeltitlarna
+  annotate(geom = "label", x = 4, y = 0.85,
+           label = "Intercept\nEst. = -3.029\nU.SE =  0.433\nC.I =  -3.881, -2.177", # geom = "label" gör en ruta runt texten. geom = "text" ger bara text utan ruta. \n betyder ny rad.
+           hjust = 0, size = 6) + # vänsterjusterar texten
+  coord_cartesian(ylim=c(0, 1.35))+ # sätter plottens zoom. Jag vill ha utrymme ovanför staplarna så att texten får plats
+  scale_y_continuous(breaks=seq(0, 1, 0.2))+ # sätter min och maxvärdena för vad som ska visas på y-axeln (inte datat, bara axeln). 0.2 är intervallet. 
+  guides(fill=FALSE) # tar bort färgstapeln till höger
+g2c
+
+
+#fas 3
+
+g3c<-ggplot(data=plot.df3, aes(x=Parameters, y=`Relative importance`, fill=`Relative importance`)) +
+  scale_x_discrete(limits = plot.df3$Parameters) + #säger år ggplot att hålla samma ordning på kolumnerna som i dataramen
+  geom_bar(stat="identity", width=0.9)+
+  geom_text(aes(label= plot.df3$Estimate), vjust=-4, color="black", size = 6)+
+  geom_text(aes(label= plot.df3$`Unconditional SE`), vjust=-2.5, color="black", size = 6)+
+  geom_text(aes(label= plot.df3$`Confidence interval`), vjust=-1, color="black", size = 6)+
+  theme_minimal()
+
+g3c<-g3c+theme(axis.text=element_text(size=16, color = "black"), # ändrar stapeltextens storlek
+  axis.title.x=element_blank(), axis.title.y=element_blank())+ # tar bort axeltitlarna
+  annotate(geom = "label", x = 4, y = 0.85,
+           label = "Intercept\nEst. = -1.287\nU.SE =  0.270\nC.I =  -1.820, -0.755", # geom = "label" gör en ruta runt texten. geom = "text" ger bara text utan ruta. \n betyder ny rad.
+           hjust = 0, size = 6) + # vänsterjusterar texten
+  coord_cartesian(ylim=c(0, 1.30))+ # sätter plottens zoom. Jag vill ha utrymme ovanför staplarna så att texten får plats
+  scale_y_continuous(breaks=seq(0, 1, 0.2)) +  # sätter min och maxvärdena för vad som ska visas på y-axeln (inte datat, bara axeln). 0.2 är intervallet. 
+  guides(fill=FALSE) # tar bort färgstapeln till höger
+g3c
+
+
+# lägg ihop
+theme_set(theme_pubr())
+comboplot <- ggarrange(g1c, g2c, g3c,
+                    labels = c("low phase", "increase phase", "peak phase"),
+                    font.label = list(size = 17, color = "black", face = "bold"),
+                    ncol = 1, nrow = 3)
+comboplot
+comboplot.text<-annotate_figure(comboplot,
+                bottom = text_grob("Parameters in selected models",
+                                   face = "bold", size = 20),
+                left = text_grob("Relative importance", 
+                                 face = "bold", rot = 90, size = 20))
+?ggarrange              
+comboplot.text             
+ggexport(comboplot.text, filename = "comboplot.jpeg", width = 6100, height = 7000, res = 400)
+?ggexport
 ##' ****** Kod jag testat runt lite med **********#########
 ##' 
 ##' 

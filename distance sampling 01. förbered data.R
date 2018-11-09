@@ -37,7 +37,7 @@ library(ggplot2)
 library(lubridate)
 
 
-ripdata<-read_xlsx(path = file.choose()) # läser in tor.modifierade riptransekter vår 2018
+ripdata<-read_xlsx(path = "Den and territory selection/Rawdata/tor_modifierade_riptransekter_vår.xlsx") # läser in tor.modifierade riptransekter vår
 
 View(ripdata)
 class(ripdata)
@@ -342,10 +342,18 @@ dht
 #' här förklaras uncertainty: http://converged.yt/RDistanceBook/distance-uncertainty.html#fn6
 rip_table <- summary(hn.df.cos)$dht$individuals$N
 rip_table$lcl <- rip_table$ucl <- rip_table$df <- NULL
-colnames(rip_table) <- c("Den Nr", "$\\hat{N}$", "$\\text{se}(\\hat{N}$)",
+colnames(rip_table) <- c("Den code", "$\\hat{N}$", "$\\text{se}(\\hat{N}$)",
                            "$\\text{CV}(\\hat{N}$)")
 
+rip_table$`Den code` <- paste0('fs', rip_table$`Den code`)
+rip_table<- rip_table%>% 
+  mutate(`Den code` = toupper(`Den code`)) %>% 
+  mutate_if(is.numeric, round, 2) #avrundar till två värdesiffror
 
+rip_table$`Den code`[11] <- "Total"
+rip_table
+#printar en fil för markdowntabell
+write_xlsx(rip_table, path = "Den and territory selection/plottar/riptabell.estimat.stats.xlsx")
 ?kable
 kable(rip_table, format = "markdown")
 
@@ -380,8 +388,42 @@ length(fjell_perp$observation)
 hist(fjell_perp$distance, main = "Rock ptarmigan observations (n = 105)", xlab = "distance from transect line (m)")
 hist(dal_perp$distance, main = "Willow ptarmigan observations (n = 19)", xlab = "distance from transect line (m)")
 
+g.fjell<-ggplot(data=fjell_perp, aes(fjell_perp$distance)) + 
+  geom_histogram(breaks=seq(0, 350, by = 50),
+col="black", 
+fill="grey", 
+alpha = .5)+ #färgtransparens 
+theme(axis.title.x=element_blank(), axis.title.y=element_blank())
+  
+g.dal<-ggplot(data=dal_perp, aes(dal_perp$distance)) + 
+  geom_histogram(breaks=seq(0, 350, by = 50),
+                 col="black", 
+                 fill="grey", 
+                 alpha = .5)+ #färgtransparens 
+  theme(axis.title.x=element_blank(), axis.title.y=element_blank())+
+  scale_y_continuous(breaks=seq(0, 12, 3))  # sätter min och maxvärdena för vad som ska visas på y-axeln (inte datat, bara axeln). 0.2 är intervallet. 
+g.fjell
+g.dal
 
+# lägger ihop plottarna
 
+theme_set(theme_pubr())
+ripcomboplot <- ggarrange(g.fjell, g.dal,
+                       labels = c("Rock ptarmigan (n = 105)", "Willow ptarmigan (n = 19)"),
+                       font.label = list(size = 9, color = "black", face = "bold"),
+                       ncol = 2, nrow = 1)
+ripcomboplot
+ripcomboplot<-annotate_figure(ripcomboplot,
+                                bottom = text_grob("Distance from transect line (m)",
+                                                   face = "bold", size = 15),
+                                left = text_grob("Frequency", 
+                                                 face = "bold", rot = 90, size = 15))
+             
+ripcomboplot             
+ggexport(ripcomboplot, filename = "ripcomboplot.jpeg",width = 2000, height = 1000, res = 300)
+?ggexport
+
+#' detection function för dalripa
 d.hn.df <- ds(dal_perp, truncation = 300, adjustment = NULL)
 summary(d.hn.df)
 gof_ds(d.hn.df)

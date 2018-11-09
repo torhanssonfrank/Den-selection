@@ -21,9 +21,9 @@ library(lubridate)
 #' I den filen ligger alla ripskitshögarna på en ensam rad. Jag har gjort dubletter
 #' av de rader som hade dubbla högar (var bara 3. Jag nästan alla högar som separata
 #' obsar under datainsamlingen) och lagt till 10 cm på den ena.Tagit bort "m" ur meterkolumnen
-rip.orginal<-read_xlsx("Rawdata/tor.riptransekter helags sommar 2018 modifierade RS_avstånd för dubbla högar.xlsx") 
+rip.orginal<-read_xlsx("Den and territory selection/Rawdata/tor.riptransekter helags sommar 2018 modifierade RS_avstånd för dubbla högar.xlsx") 
 View(rip.orginal)
-
+rip.orginal<-as.data.frame(rip.orginal) # DEN VAR BÅDE DATAFRAME, TBL och TBL_DF på samma gång! Därför funkade det inte att lägga på en detection function. Det måste vara en ren data frame
 #Plockar ut ripskit
 ripskit <- "RS"
 
@@ -34,12 +34,12 @@ ripskit <- "RS"
 #' på ripskiten. Distansen jag har är alltså redan perpendicular-distansen.
 skit_dist <- rip.orginal %>%
   filter(observation %in% ripskit) %>% 
-  select(lya, observation, distans, Höjd)
+  dplyr::select(lya, observation, distans, Höjd)
   
 
 View(skit_dist)
 
-length(unique(rip_dist$lya)) # alla lyor är med. Ingen saknar observationer.
+length(unique(skit_dist$lya)) # alla lyor är med. Ingen saknar observationer.
 
 par(mfrow=c(1,1))
 hist(skit_dist$distans, xlab = "perpendicular distance from transect (m)", main = "Observed ptarmigan dropping piles")
@@ -52,7 +52,7 @@ head(skit_dist)
 
 #plockar bort observation
 skit_dist <-skit_dist %>% 
-  select(-observation)
+  dplyr::select(-observation)
 
 #' Gör en covariate med fyra olika höjdklasser som proxy för 
 #' växtlighet. Den rikare växtligheten kan ha gjort det 
@@ -105,7 +105,7 @@ class(skit_dist$Area)
 class(skit_dist$Effort)
 class(skit_dist$elevation)
 
-class(skit_dist) # DEN VAR BÅDE DATAFRAME, TBL och TBL_DF på samma gång! Därför funkade det inte att lägga på en detection function. Det måste vara en ren data frame
+class(skit_dist) 
 skit_dist <- as.data.frame(skit_dist) #ändrar om till data frame
 
 max(skit_dist$distance) 
@@ -296,9 +296,19 @@ summary(rs.hr.df.poly)
 #' här förklaras uncertainty: http://converged.yt/RDistanceBook/distance-uncertainty.html#fn6
 skit_table <- summary(rs.hr.df.poly)$dht$individuals$N
 skit_table$lcl <- skit_table$ucl <- skit_table$df <- NULL
-colnames(skit_table) <- c("Dropping piles", "$\\hat{N}$", "$\\text{se}(\\hat{N}$)",
+colnames(skit_table) <- c("Den code", "$\\hat{N}$", "$\\text{se}(\\hat{N}$)",
                          "$\\text{CV}(\\hat{N}$)")
 
+skit_table$`Den code` <- paste0('fs', skit_table$`Den code`)
+skit_table<- skit_table%>% 
+  mutate(`Den code` = toupper(`Den code`)) %>% 
+  mutate_if(is.numeric, round, 2) #avrundar till två värdesiffror
+
+skit_table$`Den code`[11] <- "Total"
+skit_table
+#printar en fil för markdowntabell
+write_xlsx(skit_table, path = "Den and territory selection/plottar/skittabell.estimat.stats.xlsx")
+?kable
 
 ?kable
 kable(skit_table, format = "markdown")

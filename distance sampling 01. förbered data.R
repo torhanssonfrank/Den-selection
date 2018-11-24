@@ -409,7 +409,7 @@ g.dal
 
 theme_set(theme_pubr())
 ripcomboplot <- ggarrange(g.fjell, g.dal,
-                       labels = c("Rock ptarmigan (n = 105)", "Willow ptarmigan (n = 19)"),
+                       labels = c("a) Rock ptarmigan (n = 105)", "b) Willow ptarmigan (n = 19)"),
                        font.label = list(size = 9, color = "black", face = "bold"),
                        ncol = 2, nrow = 1)
 ripcomboplot

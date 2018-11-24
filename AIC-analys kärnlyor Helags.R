@@ -54,8 +54,9 @@ library(arm)
 library(car)
 update.packages(ask = FALSE) #flyttade över paketen från mappen för den äldre R-versionen till den nya, sen uppdatera. Se här https://stackoverflow.com/questions/13656699/update-r-using-rstudio
 
-
-
+citation(package = "Distance") # sä jävla bra funktion. Ger hur man ska citera ett paket
+citation() # ger referens till R.
+RStudio.Version() # ger referens till Rstudio
 # AIC-analys av kärnlyor i Helagspopulationen
 
 dens <- read_xlsx(path = "kärnlyor Helags AIC 2000 - 2018.xlsx")
@@ -289,7 +290,6 @@ summary(m.ave)
 
 
 
-
 ## skalar om med partial standard deviations, alla faser #### 
 
 #psd <- partial.sd(full.fas.km.modell)
@@ -312,8 +312,22 @@ summary(m.ave)
 
 ## plottar alla faser ####
 
-# Tabell
-sumtable<-summary(m.ave) 
+# Tabell modeller för bilaga
+
+tab.ave<-model.avg(model.set, subset = delta < 4) # tar ett större spann
+modtable<-summary(tab.ave)
+mod.tab<-as.data.frame(modtable$msTable)
+modtable
+mod.tab[,2:3]<- round(mod.tab[,2:3],2) #avrundar
+mod.tab[,4:5]<- round(mod.tab[,4:5],3)
+names(mod.tab)[1] = "K" #byter namn från df till K
+
+mod.tab$Model<-rownames(mod.tab) #ny kolumn med modelnamnen
+mod.tab<-mod.tab[,c(6,1,2,3,4,5)] #ändrar ordning
+rownames(mod.tab) <- NULL #tar bort radnamnen
+mod.tab
+write_xlsx(mod.tab, path = "Den and territory selection/Plottar/top.models.table.allafaserGIS.xlsx")
+#tabell av variabler
 sumtable  # Std. Error är unconditional standard error eftersom revised.var = true är default i model.avg().
 sumtable$importance
 
@@ -437,7 +451,7 @@ ncol(getME(stdz.model.1,"X")) # 7, om det är mindre än 10 obs per variabel i A
 par(mar = c(3,5,6,4))
 plot(fas.1.setsc, labAsExpr = TRUE)
 ave.1sc<-model.avg(fas.1.setsc, subset = delta < 2) 
-summary(ave.1sc) 
+ave.1sc$msTable
 
 ## Skalar om med partial SD fas 1 ####
 #psd.1 <- partial.sd(fas.1.modell)
@@ -477,6 +491,23 @@ summary(ave.1sc)
 #koef.psd
 
 ## fas 1 plott ####
+
+# Tabell modeller för bilaga
+tab.ave.1<-model.avg(fas.1.setsc, subset = delta < 4)# tar ett större spann
+
+modtable.1<-summary(tab.ave.1)
+modtable.1
+mod.tab.1<-as.data.frame(modtable.1$msTable)
+
+mod.tab.1[,2:3]<- round(mod.tab.1[,2:3],2) #avrundar
+mod.tab.1[,4:5]<- round(mod.tab.1[,4:5],3)
+names(mod.tab.1)[1] = "K" #byter namn från df till K
+
+mod.tab.1$Model<-rownames(mod.tab.1) #ny kolumn med modelnamnen
+mod.tab.1<-mod.tab.1[,c(6,1,2,3,4,5)] #ändrar ordning
+rownames(mod.tab.1) <- NULL #tar bort radnamnen
+mod.tab.1
+write_xlsx(mod.tab.1, path = "Den and territory selection/Plottar/top.models.table.lågfasGIS.xlsx")
 
 # tabell
 ave.1sc<-model.avg(fas.1.setsc, subset = delta < 2) 
@@ -687,6 +718,23 @@ summary(ave.2sc.mm)
 
 ## Fas 2 plott####
 
+# Tabell modeller för bilaga
+tab.ave.2<-model.avg(fas.2.set, subset = delta < 4)# tar ett större spann
+
+modtable.2<-summary(tab.ave.2)
+modtable.2
+mod.tab.2<-as.data.frame(modtable.2$msTable)
+
+mod.tab.2[,2:3]<- round(mod.tab.2[,2:3],2) #avrundar
+mod.tab.2[,4:5]<- round(mod.tab.2[,4:5],3)
+names(mod.tab.2)[1] = "K" #byter namn från df till K
+
+mod.tab.2$Model<-rownames(mod.tab.2) #ny kolumn med modelnamnen
+mod.tab.2<-mod.tab.2[,c(6,1,2,3,4,5)] #ändrar ordning
+rownames(mod.tab.2) <- NULL #tar bort radnamnen
+mod.tab.2
+write_xlsx(mod.tab.2, path = "Den and territory selection/Plottar/top.models.table.uppgångsfasGIS.xlsx")
+
 # tabell
 ave.2sc<-model.avg(fas.2.set, subset = delta < 2)
 
@@ -868,10 +916,28 @@ ave.3sc$importance # ger importance baserat på Akaikevikter, inte på antal gå
 
 ## plottar fas tre ####
 
+# Tabell modeller för bilaga
+tab.ave.3<-model.avg(fas.3.set, subset = delta < 4)# tar ett större spann
+
+modtable.3<-summary(tab.ave.3)
+modtable.3
+mod.tab.3<-as.data.frame(modtable.3$msTable)
+
+mod.tab.3[,2:3]<- round(mod.tab.3[,2:3],2) #avrundar
+mod.tab.3[,4:5]<- round(mod.tab.3[,4:5],3)
+names(mod.tab.3)[1] = "K" #byter namn från df till K
+
+mod.tab.3$Model<-rownames(mod.tab.3) #ny kolumn med modelnamnen
+mod.tab.3<-mod.tab.3[,c(6,1,2,3,4,5)] #ändrar ordning
+rownames(mod.tab.3) <- NULL #tar bort radnamnen
+mod.tab.3
+write_xlsx(mod.tab.3, path = "Den and territory selection/Plottar/top.models.table.toppfasGIS.xlsx")
+
+# tabell
 sumtable.3<-summary(ave.3sc)
 sumtable.3
 
-# tabell
+
 imp3<-as.data.frame(sumtable.3$importance)
 imp3$`sumtable.3$importance` # ska kanske ha med det här med i plotten.
 imp3<-stack(imp3) # ger error men det fungerar
@@ -1282,17 +1348,47 @@ t.test(dist.skog.1, dist.skog.3) # ej signifikant
 fas.3 %>% 
   filter(Namn %in% only.peak)%>% 
   mutate(m.dist.forest = mean(distans_till_skog)) # 5209.267 meter
+ha
 
-## testar lägga ihop figurerna i en plott ####
+## lägger ihop figurerna i en plott ####
 library(ggplot2)
 library(ggpubr)
+plot.df1<-read_xlsx(path = "Den and territory selection/Plottar/tabell_lågfas_GISdata.xlsx")
+plot.df2<-read_xlsx(path = "Den and territory selection/Plottar/tabell_uppgångsfas_GISdata.xlsx")
+plot.df3<-read_xlsx(path = "Den and territory selection/Plottar/tabell_toppfas_GISdata.xlsx")
+plot.df1<-as.data.frame(plot.df1)
+plot.df2<-as.data.frame(plot.df2)
+plot.df3<-as.data.frame(plot.df3)
+
+plot.df1<-plot.df1 %>% 
+  slice(-1)
+plot.df2<-plot.df2 %>% 
+  slice(-1)
+plot.df3<-plot.df3 %>% 
+  slice(-1)
+plot.df1
+plot.df2
+plot.df3
+
 
 plot.df1$Parameters <- c("distance to forest", "red fox density", "area bogs", "distance to water", "area water")
 plot.df2$Parameters <-c("area bogs", "distance to forest", "distance to water", "area water", "lemming density", 
                         "red fox density")
-plot.df2
-plot.df3
 plot.df3$Parameters <- c("distance to forest", "lemming density", "distance to water", "area water", "area bogs", "red fox density")
+
+plot.df1$Estimate <- paste0('Est. = ', plot.df1$Estimate) # lägger till "Est. =" i början på alla rader
+plot.df1$`Unconditional SE` <- paste0('U.SE = ', plot.df1$`Unconditional SE`)
+plot.df1$`Confidence interval` <- paste0('C.I = ', plot.df1$`Confidence interval`)
+
+plot.df2$Estimate <- paste0('Est. = ', plot.df2$Estimate) # lägger till "Est. =" i början på alla rader
+plot.df2$`Unconditional SE` <- paste0('U.SE = ', plot.df2$`Unconditional SE`)
+plot.df2$`Confidence interval` <- paste0('C.I = ', plot.df2$`Confidence interval`)
+
+plot.df3$Estimate <- paste0('Est. = ', plot.df3$Estimate) # lägger till "Est. =" i början på alla rader
+plot.df3$`Unconditional SE` <- paste0('U.SE = ', plot.df3$`Unconditional SE`)
+plot.df3$`Confidence interval` <- paste0('C.I = ', plot.df3$`Confidence interval`)
+
+
 #fas1
 g1c<-ggplot(data=plot.df1, aes(x=Parameters, y=`Relative importance`, fill=`Relative importance`)) +
   scale_x_discrete(limits = plot.df1$Parameters) + #säger år ggplot att hålla samma ordning på kolumnerna som i dataramen
@@ -1358,7 +1454,7 @@ g3c
 # lägg ihop
 theme_set(theme_pubr())
 comboplot <- ggarrange(g1c, g2c, g3c,
-                    labels = c("low phase", "increase phase", "peak phase"),
+                    labels = c("a) low phase", "b) increase phase", "c) peak phase"),
                     font.label = list(size = 17, color = "black", face = "bold"),
                     ncol = 1, nrow = 3)
 comboplot

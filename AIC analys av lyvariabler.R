@@ -126,6 +126,23 @@ round(sumtable.ly$coefmat.full, digits = 3)
 
 ## tabell alla faser ####
 
+# tabell toppmodeller
+tab.ave.ly <- model.avg(lydata.full.set, subset = delta < 4)
+modtable.ly<-summary(tab.ave.ly)
+modtable.ly
+modtable.ly<-as.data.frame(modtable.ly$msTable)
+modtable.ly
+modtable.ly[,2:3]<- round(modtable.ly[,2:3],2) #avrundar
+modtable.ly[,4:5]<- round(modtable.ly[,4:5],3)
+names(modtable.ly)[1] = "K" #byter namn från df till K
+
+modtable.ly$Model<-rownames(modtable.ly) #ny kolumn med modelnamnen
+modtable.ly<-modtable.ly[,c(6,1,2,3,4,5)] #ändrar ordning
+rownames(modtable.ly) <- NULL #tar bort radnamnen
+modtable.ly
+write_xlsx(modtable.ly, path = "Den and territory selection/Plottar/top.models.table.allafaser.riplyor.xlsx")
+
+# tabell variabler
 sumtable.ly$importance
 
 imp.ly<-as.data.frame(sumtable.ly$importance)
@@ -226,6 +243,24 @@ nrow(sumtable.ly.1$msTable)
 round(confint(sumtable.ly.1), digits = 3)
 
 ## tabell fas 1 ####
+
+# tabell toppmodeller 
+tab.ave.ly.1 <- model.avg(lydata.set.1, subset = delta < 4)
+modtable.ly.1<-summary(tab.ave.ly.1)
+modtable.ly.1
+modtable.ly.1<-as.data.frame(modtable.ly.1$msTable)
+modtable.ly.1
+modtable.ly.1[,2:3]<- round(modtable.ly.1[,2:3],2) #avrundar
+modtable.ly.1[,4:5]<- round(modtable.ly.1[,4:5],3)
+names(modtable.ly.1)[1] = "K" #byter namn från df till K
+
+modtable.ly.1$Model<-rownames(modtable.ly.1) #ny kolumn med modelnamnen
+modtable.ly.1<-modtable.ly.1[,c(6,1,2,3,4,5)] #ändrar ordning
+rownames(modtable.ly.1) <- NULL #tar bort radnamnen
+modtable.ly.1
+write_xlsx(modtable.ly.1, path = "Den and territory selection/Plottar/top.models.table.lågfas.riplyor.xlsx")
+
+#tabell variabler
 sumtable.ly.1$importance
 
 imp.ly.1<-as.data.frame(sumtable.ly.1$importance)
@@ -319,7 +354,23 @@ nrow(sumtable.ly.2$msTable)
 round(confint(sumtable.ly.2), digits = 3)
 
 ## tabell fas 2 ####
+# tabell toppmodeller 
+tab.ave.ly.2 <- model.avg(lydata.set.2, subset = delta < 4)
+modtable.ly.2<-summary(tab.ave.ly.2)
+modtable.ly.2
+modtable.ly.2<-as.data.frame(modtable.ly.2$msTable)
+modtable.ly.2
+modtable.ly.2[,2:3]<- round(modtable.ly.2[,2:3],2) #avrundar
+modtable.ly.2[,4:5]<- round(modtable.ly.2[,4:5],3)
+names(modtable.ly.2)[1] = "K" #byter namn från df till K
 
+modtable.ly.2$Model<-rownames(modtable.ly.2) #ny kolumn med modelnamnen
+modtable.ly.2<-modtable.ly.2[,c(6,1,2,3,4,5)] #ändrar ordning
+rownames(modtable.ly.2) <- NULL #tar bort radnamnen
+modtable.ly.2
+write_xlsx(modtable.ly.2, path = "Den and territory selection/Plottar/top.models.table.uppgångsfas.riplyor.xlsx")
+
+# tabell variabler
 sumtable.ly.2$importance
 
 imp.ly.2<-as.data.frame(sumtable.ly.2$importance)
@@ -417,6 +468,25 @@ round(sumtable.ly.3$coefficients, digits = 3)
 round(confint(sumtable.ly.3), digits = 3)
 
 ## tabell fas 3 ####
+
+# tabell toppmodeller 
+tab.ave.ly.3 <- model.avg(lydata.set.3, subset = delta < 4)
+modtable.ly.3<-summary(tab.ave.ly.3)
+modtable.ly.3
+modtable.ly.3<-as.data.frame(modtable.ly.3$msTable)
+modtable.ly.3
+modtable.ly.3[,2:3]<- round(modtable.ly.3[,2:3],2) #avrundar
+modtable.ly.3[,4:5]<- round(modtable.ly.3[,4:5],3)
+names(modtable.ly.3)[1] = "K" #byter namn från df till K
+
+modtable.ly.3$Model<-rownames(modtable.ly.3) #ny kolumn med modelnamnen
+modtable.ly.3<-modtable.ly.3[,c(6,1,2,3,4,5)] #ändrar ordning
+rownames(modtable.ly.3) <- NULL #tar bort radnamnen
+modtable.ly.3
+write_xlsx(modtable.ly.3, path = "Den and territory selection/Plottar/top.models.table.toppfas.riplyor.xlsx")
+
+# tabell variabler
+
 sumtable.ly.3$importance
 
 imp.ly.3<-as.data.frame(sumtable.ly.3$importance)
@@ -570,7 +640,7 @@ g3.ly
 # lägg ihop
 theme_set(theme_pubr())
 comboplot.lya <- ggarrange(g1.ly, g2.ly, g3.ly,
-                       labels = c("low phase", "increase phase", "peak phase"),
+                       labels = c("a) low phase", "b) increase phase", "c) peak phase"),
                        font.label = list(size = 17, color = "black", face = "bold"),
                        ncol = 1, nrow = 3)
 comboplot.lya

@@ -600,7 +600,7 @@ g1<-ggplot(data=plot.df1, aes(x=Parameters, y=`Relative importance`, fill=`Relat
   theme_minimal()
   
 
-g1<-g1+theme(axis.text=element_text(size=15, color = "black"), # ändrar stapeltextens storlek
+g1<-g1+theme(axis.text=element_text(size=17, color = "black"), # ändrar stapeltextens storlek
         axis.title=element_text(size=17,face="bold"))+ # ändrar axeltitlarnas storlek
   annotate(geom = "label", x = 4, y = 0.85,
            label = "Intercept\nEst. = -4.406\nU.SE = 0.728\nC.I = -5.836, -2.975", # geom = "label" gör en ruta runt texten. geom = "text" ger bara text utan ruta. \n betyder ny rad.
@@ -787,7 +787,7 @@ coefs.table.2
 
 
 coefs.table.2$Parameters <- c("Intercept", "area bogs", "distance to forest",
-                              "distance to water", "area water", "mean lemming probability", "red fox density")
+                              "distance to water", "area water", "lemming density", "red fox density")
 
 coefs.table.2 <- coefs.table.2 %>% 
   arrange(desc(`Relative importance`))
@@ -823,7 +823,7 @@ g2<-ggplot(data=plot.df2, aes(x=Parameters, y=`Relative importance`, fill=`Relat
   labs(y = "Relative importance")+
   theme_minimal()
 
-g2<-g2+theme(axis.text=element_text(size=14, color = "black"), # ändrar stapeltextens storlek
+g2<-g2+theme(axis.text=element_text(size=17, color = "black"), # ändrar stapeltextens storlek
         axis.title=element_text(size=17,face="bold"))+ # ändrar axeltitlarnas storlek
   annotate(geom = "label", x = 4, y = 0.85,
            label = "Intercept\nEst. = -3.029\nU.SE =  0.433\nC.I =  -3.881, -2.177", # geom = "label" gör en ruta runt texten. geom = "text" ger bara text utan ruta. \n betyder ny rad.
@@ -982,7 +982,7 @@ coefs.table.3
 
 
 
-coefs.table.3$Parameters <- c("Intercept", "distance to forest", "mean lemming probability",
+coefs.table.3$Parameters <- c("Intercept", "distance to forest", "lemming density",
                               "distance to water", "area water", "area bogs", "red fox density")
 coefs.table.3 <- coefs.table.3 %>% 
   arrange(desc(`Relative importance`))
@@ -1019,7 +1019,7 @@ g3<-ggplot(data=plot.df3, aes(x=Parameters, y=`Relative importance`, fill=`Relat
   labs(y = "Relative importance")+
   theme_minimal()
 
-g3<-g3+theme(axis.text=element_text(size=13, color = "black"), # ändrar stapeltextens storlek
+g3<-g3+theme(axis.text=element_text(size=17, color = "black"), # ändrar stapeltextens storlek
         axis.title=element_text(size=17,face="bold"))+ # ändrar axeltitlarnas storlek
   annotate(geom = "label", x = 4, y = 0.85,
            label = "Intercept\nEst. = -1.287\nU.SE =  0.270\nC.I =  -1.820, -0.755", # geom = "label" gör en ruta runt texten. geom = "text" ger bara text utan ruta. \n betyder ny rad.
@@ -1030,7 +1030,7 @@ g3<-g3+theme(axis.text=element_text(size=13, color = "black"), # ändrar stapelt
 g3
 coefs.table.3
 
-ggsave("importance.plot.fas3.gis.png", width = 35, height = 25, units = "cm") # sparar plotten i working directory
+ggsave("importance.plot.fas3.gis.png", width = 35, height = 20, units = "cm") # sparar plotten i working directory
 
 
 ## TABELLER PÅ ANTAL KULLAR OCH VALPLYOR####
@@ -1042,7 +1042,7 @@ length(fas.3$obsID)/60
 # Antal lyor med kull mellan 2000 - 2018
 length(unique(dens.sub$Namn[dens.sub$kull == 1]))
 unique(dens.sub$Namn[dens.sub$kull == 1])
-length(unique(dens.sub$Namn[dens.sub$kull == 1]))
+length(dens.sub$kull[dens.sub$kull ==1]) # 186 kullar
 # 35 lyor har haft kull
 #Kollar några lyor separat
 #Under vilka faser har Hulke och Snusestöten haft kull

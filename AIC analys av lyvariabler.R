@@ -322,6 +322,35 @@ confint(sumtable.ly.1, full = TRUE) #stämmer
 
 write_xlsx(coefs.table.ly.1, path = "Den and territory selection/Plottar/tabell_lågfas_lydata.xlsx")
 
+##figur fas 1####
+coefs.table.ly.1<-coefs.table.ly.1 %>% 
+  slice(-1) # tar bort interceptet
+coefs.table.ly.1
+coefs.table.ly.1$Estimate <- paste0('Est. = ', coefs.table.ly.1$Estimate) # lägger till "Est. =" i början på alla rader
+coefs.table.ly.1$`Unconditional SE` <- paste0('U.SE = ', coefs.table.ly.1$`Unconditional SE`)
+coefs.table.ly.1$`Confidence interval` <- paste0('C.I = ', coefs.table.ly.1$`Confidence interval`)
+
+g1.ly.sep<-ggplot(data=coefs.table.ly.1, aes(x=Parameters, y=`Relative importance`, fill=`Relative importance`)) +
+  scale_x_discrete(limits = coefs.table.ly.1$Parameters) + #säger år ggplot att hålla samma ordning på kolumnerna som i dataramen
+  geom_bar(stat="identity", width=0.9)+
+  geom_text(aes(label= coefs.table.ly.1$Estimate), vjust=-4, color="black", size = 6)+
+  geom_text(aes(label= coefs.table.ly.1$`Unconditional SE`), vjust=-2.5, color="black", size = 6)+
+  geom_text(aes(label= coefs.table.ly.1$`Confidence interval`), vjust=-1, color="black", size = 6)+
+  labs(x = "Parameters in selected models, lemming low phase")+
+  labs(y = "Relative importance")+
+  theme_minimal()
+
+g1.ly.sep<-g1.ly.sep+theme(axis.text=element_text(size=16, color = "black"), # ändrar stapeltextens storlek
+                           axis.title=element_text(size=17,face="bold"))+ #ändrar axeltextens storlek
+  annotate(geom = "label", x = 3, y = 0.85,
+           label = "Intercept\nEst. =   -3.52\nU.SE = 1.05\nC.I = -5.612, -1.433", # geom = "label" gör en ruta runt texten. geom = "text" ger bara text utan ruta. \n betyder ny rad.
+           hjust = 0, size = 6) + # vänsterjusterar texten
+  coord_cartesian(ylim=c(0, 1.30))+ # sätter plottens zoom. Jag vill ha utrymme ovanför staplarna så att texten får plats
+  scale_y_continuous(breaks=seq(0, 1, 0.2)) +  # sätter min och maxvärdena för vad som ska visas på y-axeln (inte datat, bara axeln). 0.2 är intervallet. 
+  guides(fill=FALSE) # tar bort färgstapeln till höger
+g1.ly.sep
+
+ggsave("importance.plot.fas1.lya.png", width = 35, height = 20, units = "cm") # sparar plotten i working directory
 ## fas 2 separat ####
 
 ly.fas.2 <- lydata.sub %>% 
@@ -433,6 +462,35 @@ confint(sumtable.ly.2, full = TRUE) # stämmer
 
 write_xlsx(coefs.table.ly.2, path = "Den and territory selection/Plottar/tabell_uppgångsfas_lydata.xlsx")
 
+##figur fas 2####
+coefs.table.ly.2<-coefs.table.ly.2 %>% 
+  slice(-1) # tar bort interceptet
+coefs.table.ly.2
+coefs.table.ly.2$Estimate <- paste0('Est. = ', coefs.table.ly.2$Estimate) # lägger till "Est. =" i början på alla rader
+coefs.table.ly.2$`Unconditional SE` <- paste0('U.SE = ', coefs.table.ly.2$`Unconditional SE`)
+coefs.table.ly.2$`Confidence interval` <- paste0('C.I = ', coefs.table.ly.2$`Confidence interval`)
+
+g2.ly.sep<-ggplot(data=coefs.table.ly.2, aes(x=Parameters, y=`Relative importance`, fill=`Relative importance`)) +
+  scale_x_discrete(limits = coefs.table.ly.2$Parameters) + #säger år ggplot att hålla samma ordning på kolumnerna som i dataramen
+  geom_bar(stat="identity", width=0.9)+
+  geom_text(aes(label= coefs.table.ly.2$Estimate), vjust=-4, color="black", size = 6)+
+  geom_text(aes(label= coefs.table.ly.2$`Unconditional SE`), vjust=-2.5, color="black", size = 6)+
+  geom_text(aes(label= coefs.table.ly.2$`Confidence interval`), vjust=-1, color="black", size = 6)+
+  labs(x = "Parameters in selected models, lemming increase phase")+
+  labs(y = "Relative importance")+
+  theme_minimal()
+
+g2.ly.sep<-g2.ly.sep+theme(axis.text=element_text(size=16, color = "black"), # ändrar stapeltextens storlek
+                           axis.title=element_text(size=17,face="bold"))+ #ändrar axeltextens storlek
+  annotate(geom = "label", x = 3, y = 0.85,
+           label = "Intercept\nEst. = -2.87\nU.SE =  1.19\nC.I =  -5.239, -0.498", # geom = "label" gör en ruta runt texten. geom = "text" ger bara text utan ruta. \n betyder ny rad.
+           hjust = 0, size = 6) + # vänsterjusterar texten
+  coord_cartesian(ylim=c(0, 1.30))+ # sätter plottens zoom. Jag vill ha utrymme ovanför staplarna så att texten får plats
+  scale_y_continuous(breaks=seq(0, 1, 0.2)) +  # sätter min och maxvärdena för vad som ska visas på y-axeln (inte datat, bara axeln). 0.2 är intervallet. 
+  guides(fill=FALSE) # tar bort färgstapeln till höger
+g2.ly.sep
+
+ggsave("importance.plot.fas2.lya.png", width = 35, height = 20, units = "cm") # sparar plotten i working directory
 ## fas 3 separat ####
 
 ly.fas.3 <- lydata.sub %>% 
@@ -548,6 +606,35 @@ confint(sumtable.ly.3, full = TRUE) # stämmer
 
 write_xlsx(coefs.table.ly.3, path = "Den and territory selection/Plottar/tabell_toppfas_lydata.xlsx")
 
+## figur fas 3 ####
+coefs.table.ly.3<-coefs.table.ly.3 %>% 
+  slice(-1) # tar bort interceptet
+coefs.table.ly.3
+coefs.table.ly.3$Estimate <- paste0('Est. = ', coefs.table.ly.3$Estimate) # lägger till "Est. =" i början på alla rader
+coefs.table.ly.3$`Unconditional SE` <- paste0('U.SE = ', coefs.table.ly.3$`Unconditional SE`)
+coefs.table.ly.3$`Confidence interval` <- paste0('C.I = ', coefs.table.ly.3$`Confidence interval`)
+
+g3.ly.sep<-ggplot(data=coefs.table.ly.3, aes(x=Parameters, y=`Relative importance`, fill=`Relative importance`)) +
+  scale_x_discrete(limits = coefs.table.ly.3$Parameters) + #säger år ggplot att hålla samma ordning på kolumnerna som i dataramen
+  geom_bar(stat="identity", width=0.9)+
+  geom_text(aes(label= coefs.table.ly.3$Estimate), vjust=-4, color="black", size = 6)+
+  geom_text(aes(label= coefs.table.ly.3$`Unconditional SE`), vjust=-2.5, color="black", size = 6)+
+  geom_text(aes(label= coefs.table.ly.3$`Confidence interval`), vjust=-1, color="black", size = 6)+
+  labs(x = "Parameters in selected models, lemming peak phase")+
+  labs(y = "Relative importance")+
+  theme_minimal()
+
+g3.ly.sep<-g3.ly.sep+theme(axis.text=element_text(size=16, color = "black"), # ändrar stapeltextens storlek
+  axis.title=element_text(size=17,face="bold"))+ #ändrar axeltextens storlek
+  annotate(geom = "label", x = 3, y = 0.85,
+           label = "Intercept\nEst. = -0.81\nU.SE =  0.495 \nC.I =  -1.806, 0.185 ", # geom = "label" gör en ruta runt texten. geom = "text" ger bara text utan ruta. \n betyder ny rad.
+           hjust = 0, size = 6) + # vänsterjusterar texten
+  coord_cartesian(ylim=c(0, 1.30))+ # sätter plottens zoom. Jag vill ha utrymme ovanför staplarna så att texten får plats
+  scale_y_continuous(breaks=seq(0, 1, 0.2)) +  # sätter min och maxvärdena för vad som ska visas på y-axeln (inte datat, bara axeln). 0.2 är intervallet. 
+  guides(fill=FALSE) # tar bort färgstapeln till höger
+g3.ly.sep
+
+ggsave("importance.plot.fas3.lya.png", width = 35, height = 20, units = "cm") # sparar plotten i working directory
 ##plottar alla faser tillsammans ####
 plot.ly1<-read_xlsx(path = "Den and territory selection/Plottar/tabell_lågfas_lydata.xlsx")
 plot.ly2<-read_xlsx(path = "Den and territory selection/Plottar/tabell_uppgångsfas_lydata.xlsx")
